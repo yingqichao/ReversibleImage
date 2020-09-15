@@ -1,4 +1,4 @@
-# %matplotlib inline
+# toooest %matplotlib inline
 import os
 from network.vgg_loss import VGGLoss
 import matplotlib.pyplot as plt
