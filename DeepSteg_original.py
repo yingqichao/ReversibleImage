@@ -19,9 +19,9 @@ if __name__ =='__main__':
     device = torch.device("cuda")
     print(device)
     # Hyper Parameters
-    num_epochs = 3
-    batch_size = 2
-    learning_rate = 0.005
+    num_epochs = 10
+    batch_size = 4
+    learning_rate = 0.0001
     beta = 1
 
     # Mean and std deviation of imagenet dataset. Source: http://cs231n.stanford.edu/reports/2017/pdfs/101.pdf
@@ -47,7 +47,7 @@ if __name__ =='__main__':
         loss_all = loss_cover + B * loss_secret
         return loss_all, loss_cover, loss_secret
 
-    def localization_loss(pred_label, cropout_label, train_hidden, train_covers, beta=1,use_vgg=True):
+    def localization_loss(pred_label, cropout_label, train_hidden, train_covers, beta=1,use_vgg=False):
         ''' 自定义localization_loss '''
 
         loss_localization = torch.nn.functional.binary_cross_entropy(pred_label, cropout_label)
@@ -107,10 +107,13 @@ if __name__ =='__main__':
                     train_secrets = data[len(data) // 2:]
                 else:
                     # self recovery
-                    train_covers = data[:]
-                    train_secrets = data[:]
+                    # train_covers = data[:]
+                    # train_secrets = data[::-1,:,:]
+                    train_covers = data[:len(data) // 2]
+                    train_secrets = data[len(data) // 2:]
 
                 # Creates variable from secret and cover images
+                # train_cover作为tamper的图像
                 train_secrets = torch.tensor(train_secrets, requires_grad=False).to(device)
                 train_covers = torch.tensor(train_covers, requires_grad=False).to(device)
 
@@ -160,7 +163,7 @@ if __name__ =='__main__':
             TRAIN_PATH,
             transforms.Compose([
                 transforms.Scale(256),
-                transforms.RandomCrop(224),
+                transforms.RandomCrop(256),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=mean,
                                      std=std)

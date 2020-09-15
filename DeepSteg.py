@@ -36,10 +36,9 @@ if __name__ =='__main__':
     MODELS_PATH = './output/models/'
     # TRAIN_PATH = cwd+'/train/'
     # VALID_PATH = cwd+'/valid/'
-    VALID_PATH = '/\\sample\\valid_coco\\'
-    TRAIN_PATH = '/\\sample\\train_coco\\'
-    TEST_PATH = '/\\sample\\test_coco\\'
-
+    VALID_PATH = './sample/valid_coco/'
+    TRAIN_PATH = './sample/train_coco/'
+    TEST_PATH = './sample/test_coco/'
     if not os.path.exists(MODELS_PATH): os.mkdir(MODELS_PATH)
 
 
