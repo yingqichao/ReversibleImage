@@ -107,10 +107,10 @@ if __name__ =='__main__':
                     train_secrets = data[len(data) // 2:]
                 else:
                     # self recovery
-                    # train_covers = data[:]
-                    # train_secrets = data[::-1,:,:]
-                    train_covers = data[:len(data) // 2]
-                    train_secrets = data[len(data) // 2:]
+                    train_covers = data[:]
+                    train_secrets = data[:]
+                    # train_covers = data[:len(data) // 2]
+                    # train_secrets = data[len(data) // 2:]
 
                 # Creates variable from secret and cover images
                 # train_cover作为tamper的图像

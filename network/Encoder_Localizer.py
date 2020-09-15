@@ -20,9 +20,9 @@ def gaussian(tensor, mean=0, stddev=0.1):
 
 
 # Preparation Network (2 conv layers)
-class PrepNetwork(nn.Module):
+class EncoderNetwork(nn.Module):
     def __init__(self):
-        super(PrepNetwork, self).__init__()
+        super(EncoderNetwork, self).__init__()
         self.config = Encoder_Localizer_config()
         self.initialP3 = nn.Sequential(
             ConvBNRelu(3, self.config.encoder_features),
@@ -83,9 +83,9 @@ class PrepNetwork(nn.Module):
 
 
 # Hiding Network (5 conv layers)
-class HidingNetwork(nn.Module):
+class DecoderNetwork(nn.Module):
     def __init__(self):
-        super(HidingNetwork, self).__init__()
+        super(DecoderNetwork, self).__init__()
         self.config = Encoder_Localizer_config()
         self.initialH3 = nn.Sequential(
             ConvBNRelu(2*self.config.encoder_features, self.config.encoder_features),
@@ -147,12 +147,17 @@ class LocalizeNetwork(nn.Module):
         channels = int(self.config.Width*self.config.Height/self.config.block_size/self.config.block_size)
         self.initialR3 = nn.Sequential(
             ConvBNRelu(3, self.config.decoder_channels),
+            nn.AdaptiveAvgPool2d(output_size=(int(self.config.Width / 2), int(self.config.Height / 2))),
             ConvBNRelu(self.config.decoder_channels, self.config.decoder_channels),
+            nn.AdaptiveAvgPool2d(output_size=(int(self.config.Width / 4), int(self.config.Height / 4))),
             ConvBNRelu(self.config.decoder_channels, self.config.decoder_channels),
-            ConvBNRelu(self.config.decoder_channels, self.config.decoder_channels),
-            ConvBNRelu(self.config.decoder_channels, self.config.decoder_channels),
-            ConvBNRelu(self.config.decoder_channels, self.config.decoder_channels),
-            ConvBNRelu(self.config.decoder_channels, channels),
+            nn.AdaptiveAvgPool2d(output_size=(int(self.config.Width / 8), int(self.config.Height / 8))),
+            ConvBNRelu(self.config.decoder_channels, 1),
+            nn.AdaptiveAvgPool2d(output_size=(int(self.config.Width / 16), int(self.config.Height / 16))),
+            # nn.Conv2d(self.config.decoder_channels,1,kernel_size=3,stride=1),
+            # nn.BatchNorm2d(1),
+            # nn.Sigmoid(),
+
             # nn.Conv2d(3, config.decoder_channels, kernel_size=3, padding=1),
             # nn.ReLU(),
             # nn.Conv2d(config.decoder_channels, config.decoder_channels, kernel_size=3, padding=1),
@@ -164,7 +169,7 @@ class LocalizeNetwork(nn.Module):
             # nn.Conv2d(config.decoder_channels, channels, kernel_size=3, padding=1),
             # nn.ReLU()
         )
-        self.average_pool = nn.AdaptiveAvgPool2d(output_size=(1, 1))
+        # self.average_pool = nn.AdaptiveAvgPool2d(output_size=(1, 1))
         self.finalLayer = nn.Sequential(
             nn.Linear(channels, channels),
             nn.Sigmoid(),
@@ -172,8 +177,8 @@ class LocalizeNetwork(nn.Module):
 
     def forward(self, r):
         r1 = self.initialR3(r)
-        r2 = self.average_pool(r1)
-        r2 = r2.squeeze()
+        # r2 = self.average_pool(r1)
+        r2 = r1.reshape((r1.shape[0],int(self.config.Width / 16)*int(self.config.Height / 16)))
         out = self.finalLayer(r2)
         return out
 
@@ -182,9 +187,9 @@ class LocalizeNetwork(nn.Module):
 class Encoder_Localizer(nn.Module):
     def __init__(self,crop_size=(0.5,0.5)):
         super(Encoder_Localizer, self).__init__()
-        self.encoder = PrepNetwork().to(device)
+        self.encoder = EncoderNetwork().to(device)
 
-        self.hiding = HidingNetwork().to(device)
+        self.decoder = DecoderNetwork().to(device)
         self.cropout_noise_layer = Cropout(crop_size,crop_size).to(device)
 
         self.other_noise_layers = [Identity()]
@@ -197,7 +202,7 @@ class Encoder_Localizer(nn.Module):
         # 得到Encode后的特征平面
         x_1 = self.encoder(secret)
         # Decode得到近似原图，这里的x_2_noise为添加高斯噪声后的结果
-        x_2, x_2_noise = self.hiding(x_1)
+        x_2, x_2_noise = self.decoder(x_1)
         # 添加Cropout噪声，cover是跟secret无关的图
         x_1_crop, cropout_label = self.cropout_noise_layer(x_2, cover)
         # 添加一般噪声：Gaussian JPEG 等（optional）
