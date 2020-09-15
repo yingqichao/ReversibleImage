@@ -22,11 +22,11 @@ if __name__ =='__main__':
     num_epochs = 10
     batch_size = 8
     learning_rate = 0.0001
-    beta = 1
+    beta = 5
 
     # Mean and std deviation of imagenet dataset. Source: http://cs231n.stanford.edu/reports/2017/pdfs/101.pdf
-    std = [0.229, 0.224, 0.225]
-    mean = [0.485, 0.456, 0.406]
+    # std = [0.229, 0.224, 0.225]
+    # mean = [0.485, 0.456, 0.406]
 
     # TODO: Define train, validation and models
     MODELS_PATH = './output/models/'
@@ -49,7 +49,8 @@ if __name__ =='__main__':
 
     def localization_loss(pred_label, cropout_label, train_hidden, train_covers, beta=1,use_vgg=False):
         ''' 自定义localization_loss '''
-
+        numpy_watch_groundtruth = cropout_label.data.clone().detach().cpu().numpy()
+        numpy_watch_predicted = pred_label.data.clone().detach().cpu().numpy()
         loss_localization = torch.nn.functional.binary_cross_entropy(pred_label, cropout_label)
 
         if use_vgg:
@@ -74,9 +75,9 @@ if __name__ =='__main__':
     def imshow(img, idx, learning_rate, beta):
         '''Prints out an image given in tensor format.'''
 
-        img = denormalize(img, std, mean)
+        # img = denormalize(img, std, mean)
         npimg = img.cpu().numpy()
-        if img.shape[0]==3:
+        if img.shape[0] == 3:
             plt.imshow(np.transpose(npimg, (1, 2, 0)))
         plt.title('Example ' + str(idx) + ', lr=' + str(learning_rate) + ', B=' + str(beta)+' 隐藏图像 宿主图像 输出图像 提取得到的图像')
         plt.show()
@@ -155,7 +156,7 @@ if __name__ =='__main__':
     isSelfRecovery = True
     skipTraining = False
     # Creates net object
-    net = Encoder_Localizer().to(device)
+    net = Encoder_Localizer(config).to(device)
 
     # Creates training set
     train_loader = torch.utils.data.DataLoader(
@@ -165,8 +166,8 @@ if __name__ =='__main__':
                 transforms.Scale(256),
                 transforms.RandomCrop(256),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=mean,
-                                     std=std)
+                # transforms.Normalize(mean=mean,
+                #                      std=std)
             ])), batch_size=batch_size, num_workers=1,
         pin_memory=True, shuffle=True, drop_last=True)
 
@@ -178,8 +179,8 @@ if __name__ =='__main__':
                 transforms.Scale(256),
                 transforms.RandomCrop(256),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=mean,
-                                     std=std)
+                # transforms.Normalize(mean=mean,
+                #                      std=std)
             ])), batch_size=1, num_workers=1,
         pin_memory=True, shuffle=True, drop_last=True)
     if not skipTraining:

@@ -21,9 +21,9 @@ def gaussian(tensor, mean=0, stddev=0.1):
 
 # Preparation Network (2 conv layers)
 class EncoderNetwork(nn.Module):
-    def __init__(self):
+    def __init__(self, config=Encoder_Localizer_config()):
         super(EncoderNetwork, self).__init__()
-        self.config = Encoder_Localizer_config()
+        self.config = config
         self.initialP3 = nn.Sequential(
             ConvBNRelu(3, self.config.encoder_features),
             ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
@@ -84,9 +84,9 @@ class EncoderNetwork(nn.Module):
 
 # Hiding Network (5 conv layers)
 class DecoderNetwork(nn.Module):
-    def __init__(self):
+    def __init__(self, config=Encoder_Localizer_config()):
         super(DecoderNetwork, self).__init__()
-        self.config = Encoder_Localizer_config()
+        self.config = config
         self.initialH3 = nn.Sequential(
             ConvBNRelu(2*self.config.encoder_features, self.config.encoder_features),
             ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
@@ -141,9 +141,9 @@ class DecoderNetwork(nn.Module):
 
 # Reveal Network (2 conv layers)
 class LocalizeNetwork(nn.Module):
-    def __init__(self):
+    def __init__(self, config=Encoder_Localizer_config()):
         super(LocalizeNetwork, self).__init__()
-        self.config = Encoder_Localizer_config()
+        self.config = config
         channels = int(self.config.Width*self.config.Height/self.config.block_size/self.config.block_size)
         self.initialR3 = nn.Sequential(
             ConvBNRelu(3, self.config.decoder_channels),
@@ -152,7 +152,7 @@ class LocalizeNetwork(nn.Module):
             nn.AdaptiveAvgPool2d(output_size=(int(self.config.Width / 4), int(self.config.Height / 4))),
             ConvBNRelu(self.config.decoder_channels, self.config.decoder_channels),
             nn.AdaptiveAvgPool2d(output_size=(int(self.config.Width / 8), int(self.config.Height / 8))),
-            ConvBNRelu(self.config.decoder_channels, 1),
+            ConvBNRelu(self.config.decoder_channels, self.config.decoder_channels),
             nn.AdaptiveAvgPool2d(output_size=(int(self.config.Width / 16), int(self.config.Height / 16))),
             # nn.Conv2d(self.config.decoder_channels,1,kernel_size=3,stride=1),
             # nn.BatchNorm2d(1),
@@ -169,34 +169,43 @@ class LocalizeNetwork(nn.Module):
             # nn.Conv2d(config.decoder_channels, channels, kernel_size=3, padding=1),
             # nn.ReLU()
         )
-        # self.average_pool = nn.AdaptiveAvgPool2d(output_size=(1, 1))
-        self.finalLayer = nn.Sequential(
-            nn.Linear(channels, channels),
-            nn.Sigmoid(),
+        self.last_conv = nn.Sequential(
+            nn.Conv2d(self.config.decoder_channels,1,kernel_size=1,stride=1),
+            nn.BatchNorm2d(1),
+            nn.Sigmoid()
         )
+        # self.average_pool = nn.AdaptiveAvgPool2d(output_size=(1, 1))
+        # self.finalLayer = nn.Sequential(
+        #     nn.Linear(channels, channels),
+        #     nn.Sigmoid(),
+        # )
 
     def forward(self, r):
         r1 = self.initialR3(r)
+        r1_conv = self.last_conv(r1)
+
+
         # r2 = self.average_pool(r1)
-        r2 = r1.reshape((r1.shape[0],int(self.config.Width / 16)*int(self.config.Height / 16)))
-        out = self.finalLayer(r2)
-        return out
+        # r2 = r1_conv.reshape((r1.shape[0],int(self.config.Width / 16)*int(self.config.Height / 16)))
+        # out = self.finalLayer(r1_conv)
+        return r1_conv
 
 
 # Join three networks in one module
 class Encoder_Localizer(nn.Module):
-    def __init__(self,crop_size=(0.5,0.5)):
+    def __init__(self,config=Encoder_Localizer_config(),crop_size=(0.5,0.5)):
         super(Encoder_Localizer, self).__init__()
-        self.encoder = EncoderNetwork().to(device)
+        self.config = config
+        self.encoder = EncoderNetwork(config).to(device)
 
-        self.decoder = DecoderNetwork().to(device)
-        self.cropout_noise_layer = Cropout(crop_size,crop_size).to(device)
+        self.decoder = DecoderNetwork(config).to(device)
+        self.cropout_noise_layer = Cropout(self.config.crop_size,config).to(device)
 
         self.other_noise_layers = [Identity()]
         self.other_noise_layers.append(JpegCompression(device))
         self.other_noise_layers.append(Quantization(device))
 
-        self.localize = LocalizeNetwork().to(device)
+        self.localize = LocalizeNetwork(config).to(device)
 
     def forward(self, secret, cover):
         # 得到Encode后的特征平面

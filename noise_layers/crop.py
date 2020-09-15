@@ -28,8 +28,10 @@ def get_random_rectangle_inside(image, height_ratio_range, width_ratio_range):
     image_height = image.shape[2]
     image_width = image.shape[3]
 
-    remaining_height = int(np.rint(random_float(height_ratio_range[0], height_ratio_range[1]) * image_height))
-    remaining_width = int(np.rint(random_float(width_ratio_range[0], width_ratio_range[0]) * image_width))
+    r_float_height, r_float_width = \
+        random_float(height_ratio_range[0], height_ratio_range[1]), random_float(width_ratio_range[0], width_ratio_range[1])
+    remaining_height = int(np.rint(r_float_height * image_height))
+    remaining_width = int(np.rint(r_float_width * image_width))
 
     if remaining_height == image_height:
         height_start = 0
@@ -41,7 +43,7 @@ def get_random_rectangle_inside(image, height_ratio_range, width_ratio_range):
     else:
         width_start = np.random.randint(0, image_width - remaining_width)
 
-    return height_start, height_start+remaining_height, width_start, width_start+remaining_width
+    return height_start, height_start+remaining_height, width_start, width_start+remaining_width, r_float_height*r_float_width
 
 
 class Crop(nn.Module):
