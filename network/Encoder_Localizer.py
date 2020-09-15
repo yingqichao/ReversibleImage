@@ -23,50 +23,58 @@ def gaussian(tensor, mean=0, stddev=0.1):
 class PrepNetwork(nn.Module):
     def __init__(self):
         super(PrepNetwork, self).__init__()
+        self.config = Encoder_Localizer_config()
         self.initialP3 = nn.Sequential(
-            ConvBNRelu(3, 64),
-            ConvBNRelu(64, 64),
-            ConvBNRelu(64, 64),
-            ConvBNRelu(64, 64),
-            ConvBNRelu(64, 64)
+            ConvBNRelu(3, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features)
             )
         self.initialP4 = nn.Sequential(
-            ConvBNRelu(3, 64),
-            ConvBNRelu(64, 64),
-            ConvBNRelu(64, 64),
-            ConvBNRelu(64, 64),
-            ConvBNRelu(64, 64)
+            ConvBNRelu(3, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features)
         )
         # self.initialP5 = nn.Sequential(
-        #     ConvBNRelu(3, 64),
-        #     ConvBNRelu(64, 64),
-        #     ConvBNRelu(64, 64),
-        #     ConvBNRelu(64, 64),
-        #     ConvBNRelu(64, 64)
+        #     ConvBNRelu(3, self.config.encoder_features),
+        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features)
         # )
         self.finalP3 = nn.Sequential(
-            ConvBNRelu(128, 64),
-            ConvBNRelu(64, 64),
-            ConvBNRelu(64, 64),
-            ConvBNRelu(64, 64),
-            ConvBNRelu(64, 64),
+            ConvBNRelu(2*self.config.encoder_features+self.config.water_features, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
         )
         self.finalP4 = nn.Sequential(
-            ConvBNRelu(128, 64),
-            ConvBNRelu(64, 64),
-            ConvBNRelu(64, 64),
-            ConvBNRelu(64, 64),
-            ConvBNRelu(64, 64),
+            ConvBNRelu(2*self.config.encoder_features+self.config.water_features, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
         )
         # self.finalP5 = nn.Sequential(
-        #     nn.Conv2d(164, 64, kernel_size=5, padding=2),
+        #     nn.Conv2d(1self.config.encoder_features, self.config.encoder_features, kernel_size=5, padding=2),
         #     nn.ReLU())
 
     def forward(self, p):
         p1 = self.initialP3(p)
         p2 = self.initialP4(p)
         # p3 = self.initialP5(p)
-        mid = torch.cat((p1, p2), 1)
+
+        message = torch.ones(p2.shape[0], 8, p2.shape[2],p2.shape[3]).to(device)
+        # expanded_message = message.unsqueeze(-1)
+        # expanded_message = expanded_message.unsqueeze_(-1)
+        # expanded_message = expanded_message.expand(-1, -1, self.H, self.W)
+        #concat = torch.cat([expanded_message, encoded_image, image], dim=1)
+
+        mid = torch.cat((p1, p2,message), 1)
         p4 = self.finalP3(mid)
         p5 = self.finalP4(mid)
         # p6 = self.finalP5(mid)
@@ -78,43 +86,44 @@ class PrepNetwork(nn.Module):
 class HidingNetwork(nn.Module):
     def __init__(self):
         super(HidingNetwork, self).__init__()
+        self.config = Encoder_Localizer_config()
         self.initialH3 = nn.Sequential(
-            ConvBNRelu(128, 64),
-            ConvBNRelu(64, 64),
-            ConvBNRelu(64, 64),
-            ConvBNRelu(64, 64),
-            ConvBNRelu(64, 64),
-            ConvBNRelu(64, 64),
-            ConvBNRelu(64, 64)
+            ConvBNRelu(2*self.config.encoder_features, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+            ConvBNRelu(self.config.encoder_features, self.config.encoder_features)
         )
         # self.initialH4 = nn.Sequential(
-        #     ConvBNRelu(128, 64),
-        #     ConvBNRelu(64, 64),
-        #     ConvBNRelu(64, 64),
-        #     ConvBNRelu(64, 64),
-        #     ConvBNRelu(64, 64)
+        #     ConvBNRelu(128, self.config.encoder_features),
+        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features)
         #     )
 
         # self.initialH5 = nn.Sequential(
-        #     ConvBNRelu(128, 64),
-        #     ConvBNRelu(64, 64),
-        #     ConvBNRelu(64, 64),
-        #     ConvBNRelu(64, 64),
-        #     ConvBNRelu(64, 64)
+        #     ConvBNRelu(128, self.config.encoder_features),
+        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features)
         #     )
         # self.finalH3 = nn.Sequential(
-        #     nn.Conv2d(128, 64, kernel_size=3, padding=1),
+        #     nn.Conv2d(128, self.config.encoder_features, kernel_size=3, padding=1),
         #     nn.ReLU())
         # self.finalH4 = nn.Sequential(
-        #     nn.Conv2d(128, 64, kernel_size=4, padding=1),
+        #     nn.Conv2d(128, self.config.encoder_features, kernel_size=4, padding=1),
         #     nn.ReLU(),
-        #     nn.Conv2d(64, 64, kernel_size=4, padding=2),
+        #     nn.Conv2d(self.config.encoder_features, self.config.encoder_features, kernel_size=4, padding=2),
         #     nn.ReLU())
         # self.finalH5 = nn.Sequential(
-        #     nn.Conv2d(128, 64, kernel_size=5, padding=2),
+        #     nn.Conv2d(128, self.config.encoder_features, kernel_size=5, padding=2),
         #     nn.ReLU())
         self.finalH = nn.Sequential(
-            nn.Conv2d(64, 3, kernel_size=1, padding=0))
+            nn.Conv2d(self.config.encoder_features, 3, kernel_size=1, padding=0))
 
     def forward(self, h):
         h1 = self.initialH3(h)
@@ -132,17 +141,18 @@ class HidingNetwork(nn.Module):
 
 # Reveal Network (2 conv layers)
 class LocalizeNetwork(nn.Module):
-    def __init__(self,config:Encoder_Localizer_config=Encoder_Localizer_config()):
+    def __init__(self):
         super(LocalizeNetwork, self).__init__()
-        channels = int(config.Width*config.Height/config.block_size/config.block_size)
+        self.config = Encoder_Localizer_config()
+        channels = int(self.config.Width*self.config.Height/self.config.block_size/self.config.block_size)
         self.initialR3 = nn.Sequential(
-            ConvBNRelu(3, config.decoder_channels),
-            ConvBNRelu(config.decoder_channels, config.decoder_channels),
-            ConvBNRelu(config.decoder_channels, config.decoder_channels),
-            ConvBNRelu(config.decoder_channels, config.decoder_channels),
-            ConvBNRelu(config.decoder_channels, config.decoder_channels),
-            ConvBNRelu(config.decoder_channels, config.decoder_channels),
-            ConvBNRelu(config.decoder_channels, channels),
+            ConvBNRelu(3, self.config.decoder_channels),
+            ConvBNRelu(self.config.decoder_channels, self.config.decoder_channels),
+            ConvBNRelu(self.config.decoder_channels, self.config.decoder_channels),
+            ConvBNRelu(self.config.decoder_channels, self.config.decoder_channels),
+            ConvBNRelu(self.config.decoder_channels, self.config.decoder_channels),
+            ConvBNRelu(self.config.decoder_channels, self.config.decoder_channels),
+            ConvBNRelu(self.config.decoder_channels, channels),
             # nn.Conv2d(3, config.decoder_channels, kernel_size=3, padding=1),
             # nn.ReLU(),
             # nn.Conv2d(config.decoder_channels, config.decoder_channels, kernel_size=3, padding=1),

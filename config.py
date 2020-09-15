@@ -10,4 +10,7 @@ class Encoder_Localizer_config():
         self.decoder_channels = 128
         self.min_required_block = 128
         self.min_required_block_portion = 0.4
+        self.crop_size = (0.7, 0.7)
+        self.encoder_features = 64
+        self.water_features = 8
 

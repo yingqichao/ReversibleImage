@@ -20,7 +20,7 @@ if __name__ =='__main__':
     print(device)
     # Hyper Parameters
     num_epochs = 10
-    batch_size = 4
+    batch_size = 8
     learning_rate = 0.0001
     beta = 1
 
@@ -176,7 +176,7 @@ if __name__ =='__main__':
             TEST_PATH,
             transforms.Compose([
                 transforms.Scale(256),
-                transforms.RandomCrop(224),
+                transforms.RandomCrop(256),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=mean,
                                      std=std)
@@ -191,7 +191,7 @@ if __name__ =='__main__':
         plt.xlabel('Batch')
         plt.show()
     else:
-        net.load_state_dict(torch.load(MODELS_PATH+'Epoch N3.pkl'))
+        net.load_state_dict(torch.load(MODELS_PATH+'Epoch N10.pkl'))
 
     # Switch to evaluate mode
     net.eval()
