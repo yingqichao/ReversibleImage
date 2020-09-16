@@ -37,20 +37,7 @@ class EncoderNetwork(nn.Module):
             Down(self.config.encoder_features, self.config.encoder_features),
 
         )
-        # self.initialP4 = nn.Sequential(
-        #     ConvBNRelu(3, self.config.encoder_features),
-        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features)
-        # )
-        # self.initialP5 = nn.Sequential(
-        #     ConvBNRelu(3, self.config.encoder_features),
-        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features)
-        # )
+
         self.furtherConv = nn.Sequential(
             ConvBNRelu(self.config.encoder_features+self.config.water_features, self.config.encoder_features),
             ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
@@ -59,17 +46,10 @@ class EncoderNetwork(nn.Module):
             ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
         )
 
-        # self.finalP5 = nn.Sequential(
-        #     nn.Conv2d(1self.config.encoder_features, self.config.encoder_features, kernel_size=5, padding=2),
-        #     nn.ReLU())
 
     def forward(self, p):
         p1 = self.downsample(p)
         message = torch.ones(p1.shape[0], 8, p1.shape[2],p1.shape[3]).to(device)
-        # expanded_message = message.unsqueeze(-1)
-        # expanded_message = expanded_message.unsqueeze_(-1)
-        # expanded_message = expanded_message.expand(-1, -1, self.H, self.W)
-        #concat = torch.cat([expanded_message, encoded_image, image], dim=1)
 
         mid = torch.cat((p1, message), 1)
         out = self.furtherConv(mid)
@@ -92,44 +72,13 @@ class DecoderNetwork(nn.Module):
             # Size:128->256
             Up(self.config.encoder_features, self.config.encoder_features)
         )
-        # self.initialH4 = nn.Sequential(
-        #     ConvBNRelu(128, self.config.encoder_features),
-        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features)
-        #     )
 
-        # self.initialH5 = nn.Sequential(
-        #     ConvBNRelu(128, self.config.encoder_features),
-        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features)
-        #     )
-        # self.finalH3 = nn.Sequential(
-        #     nn.Conv2d(128, self.config.encoder_features, kernel_size=3, padding=1),
-        #     nn.ReLU())
-        # self.finalH4 = nn.Sequential(
-        #     nn.Conv2d(128, self.config.encoder_features, kernel_size=4, padding=1),
-        #     nn.ReLU(),
-        #     nn.Conv2d(self.config.encoder_features, self.config.encoder_features, kernel_size=4, padding=2),
-        #     nn.ReLU())
-        # self.finalH5 = nn.Sequential(
-        #     nn.Conv2d(128, self.config.encoder_features, kernel_size=5, padding=2),
-        #     nn.ReLU())
         self.conv_kernel_size_1 = nn.Sequential(
             nn.Conv2d(self.config.encoder_features, 3, kernel_size=1, padding=0))
 
     def forward(self, h):
         h1 = self.upsample(h)
-        # h2 = self.initialH4(h)
-        # h3 = self.initialH5(h)
-        # mid = torch.cat((h1, h2), 1)
-        # h4 = self.finalH3(mid)
-        # h5 = self.finalH4(mid)
-        # h6 = self.finalH5(mid)
-        # mid2 = torch.cat((h4, h5), 1)
+
         out = self.conv_kernel_size_1(h1)
         out_noise = gaussian(out.data, 0, 0.1)
         return out, out_noise
@@ -150,40 +99,20 @@ class LocalizeNetwork(nn.Module):
             nn.AdaptiveAvgPool2d(output_size=(int(self.config.Width / 8), int(self.config.Height / 8))),
             ConvBNRelu(self.config.decoder_channels, self.config.decoder_channels),
             nn.AdaptiveAvgPool2d(output_size=(int(self.config.Width / 16), int(self.config.Height / 16))),
-            # nn.Conv2d(self.config.decoder_channels,1,kernel_size=3,stride=1),
-            # nn.BatchNorm2d(1),
-            # nn.Sigmoid(),
 
-            # nn.Conv2d(3, config.decoder_channels, kernel_size=3, padding=1),
-            # nn.ReLU(),
-            # nn.Conv2d(config.decoder_channels, config.decoder_channels, kernel_size=3, padding=1),
-            # nn.ReLU(),
-            # nn.Conv2d(config.decoder_channels, config.decoder_channels, kernel_size=3, padding=1),
-            # nn.ReLU(),
-            # nn.Conv2d(config.decoder_channels, config.decoder_channels, kernel_size=3, padding=1),
-            # nn.ReLU(),
-            # nn.Conv2d(config.decoder_channels, channels, kernel_size=3, padding=1),
-            # nn.ReLU()
         )
         self.last_conv = nn.Sequential(
             nn.Conv2d(self.config.decoder_channels,1,kernel_size=1,stride=1),
             nn.BatchNorm2d(1),
             nn.Sigmoid()
         )
-        # self.average_pool = nn.AdaptiveAvgPool2d(output_size=(1, 1))
-        # self.finalLayer = nn.Sequential(
-        #     nn.Linear(channels, channels),
-        #     nn.Sigmoid(),
-        # )
+
 
     def forward(self, r):
         r1 = self.initialR3(r)
         r1_conv = self.last_conv(r1)
 
 
-        # r2 = self.average_pool(r1)
-        # r2 = r1_conv.reshape((r1.shape[0],int(self.config.Width / 16)*int(self.config.Height / 16)))
-        # out = self.finalLayer(r1_conv)
         return r1_conv
 
 
