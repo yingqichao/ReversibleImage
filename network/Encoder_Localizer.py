@@ -8,6 +8,8 @@ from noise_layers.quantization import Quantization
 from noise_layers.identity import Identity
 import numpy as np
 from network.conv_bn_relu import ConvBNRelu
+from network.down_sample import Down
+from network.up_sample import Up
 
 device = torch.device("cuda")
 
@@ -18,26 +20,30 @@ def gaussian(tensor, mean=0, stddev=0.1):
 
     return tensor + noise
 
-
 # Preparation Network (2 conv layers)
 class EncoderNetwork(nn.Module):
     def __init__(self, config=Encoder_Localizer_config()):
         super(EncoderNetwork, self).__init__()
         self.config = config
-        self.initialP3 = nn.Sequential(
-            ConvBNRelu(3, self.config.encoder_features),
-            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-            ConvBNRelu(self.config.encoder_features, self.config.encoder_features)
-            )
-        self.initialP4 = nn.Sequential(
-            ConvBNRelu(3, self.config.encoder_features),
-            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-            ConvBNRelu(self.config.encoder_features, self.config.encoder_features)
+
+        self.downsample = nn.Sequential(
+            # Size: 256->128
+            Down(3,self.config.encoder_features),
+            # Size: 128->64
+            Down(self.config.encoder_features, self.config.encoder_features),
+            # Size: 64->32
+            Down(self.config.encoder_features, self.config.encoder_features),
+            # Size: 32->16
+            Down(self.config.encoder_features, self.config.encoder_features),
+
         )
+        # self.initialP4 = nn.Sequential(
+        #     ConvBNRelu(3, self.config.encoder_features),
+        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
+        #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features)
+        # )
         # self.initialP5 = nn.Sequential(
         #     ConvBNRelu(3, self.config.encoder_features),
         #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
@@ -45,40 +51,29 @@ class EncoderNetwork(nn.Module):
         #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
         #     ConvBNRelu(self.config.encoder_features, self.config.encoder_features)
         # )
-        self.finalP3 = nn.Sequential(
-            ConvBNRelu(2*self.config.encoder_features+self.config.water_features, self.config.encoder_features),
+        self.furtherConv = nn.Sequential(
+            ConvBNRelu(self.config.encoder_features+self.config.water_features, self.config.encoder_features),
             ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
             ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
             ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
             ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
         )
-        self.finalP4 = nn.Sequential(
-            ConvBNRelu(2*self.config.encoder_features+self.config.water_features, self.config.encoder_features),
-            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-        )
+
         # self.finalP5 = nn.Sequential(
         #     nn.Conv2d(1self.config.encoder_features, self.config.encoder_features, kernel_size=5, padding=2),
         #     nn.ReLU())
 
     def forward(self, p):
-        p1 = self.initialP3(p)
-        p2 = self.initialP4(p)
-        # p3 = self.initialP5(p)
-
-        message = torch.ones(p2.shape[0], 8, p2.shape[2],p2.shape[3]).to(device)
+        p1 = self.downsample(p)
+        message = torch.ones(p1.shape[0], 8, p1.shape[2],p1.shape[3]).to(device)
         # expanded_message = message.unsqueeze(-1)
         # expanded_message = expanded_message.unsqueeze_(-1)
         # expanded_message = expanded_message.expand(-1, -1, self.H, self.W)
         #concat = torch.cat([expanded_message, encoded_image, image], dim=1)
 
-        mid = torch.cat((p1, p2,message), 1)
-        p4 = self.finalP3(mid)
-        p5 = self.finalP4(mid)
-        # p6 = self.finalP5(mid)
-        out = torch.cat((p4, p5), 1)
+        mid = torch.cat((p1, message), 1)
+        out = self.furtherConv(mid)
+
         return out
 
 
@@ -87,14 +82,15 @@ class DecoderNetwork(nn.Module):
     def __init__(self, config=Encoder_Localizer_config()):
         super(DecoderNetwork, self).__init__()
         self.config = config
-        self.initialH3 = nn.Sequential(
-            ConvBNRelu(2*self.config.encoder_features, self.config.encoder_features),
-            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-            ConvBNRelu(self.config.encoder_features, self.config.encoder_features),
-            ConvBNRelu(self.config.encoder_features, self.config.encoder_features)
+        self.upsample = nn.Sequential(
+            # Size:16->32
+            Up(self.config.encoder_features,self.config.encoder_features),
+            # Size:32->64
+            Up(self.config.encoder_features, self.config.encoder_features),
+            # Size:64->128
+            Up(self.config.encoder_features, self.config.encoder_features),
+            # Size:128->256
+            Up(self.config.encoder_features, self.config.encoder_features)
         )
         # self.initialH4 = nn.Sequential(
         #     ConvBNRelu(128, self.config.encoder_features),
@@ -122,11 +118,11 @@ class DecoderNetwork(nn.Module):
         # self.finalH5 = nn.Sequential(
         #     nn.Conv2d(128, self.config.encoder_features, kernel_size=5, padding=2),
         #     nn.ReLU())
-        self.finalH = nn.Sequential(
+        self.conv_kernel_size_1 = nn.Sequential(
             nn.Conv2d(self.config.encoder_features, 3, kernel_size=1, padding=0))
 
     def forward(self, h):
-        h1 = self.initialH3(h)
+        h1 = self.upsample(h)
         # h2 = self.initialH4(h)
         # h3 = self.initialH5(h)
         # mid = torch.cat((h1, h2), 1)
@@ -134,7 +130,7 @@ class DecoderNetwork(nn.Module):
         # h5 = self.finalH4(mid)
         # h6 = self.finalH5(mid)
         # mid2 = torch.cat((h4, h5), 1)
-        out = self.finalH(h1)
+        out = self.conv_kernel_size_1(h1)
         out_noise = gaussian(out.data, 0, 0.1)
         return out, out_noise
 
