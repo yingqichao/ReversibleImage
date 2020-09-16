@@ -12,6 +12,6 @@ class Encoder_Localizer_config():
         self.min_required_block_portion = 0.4
         self.crop_size = (0.7, 0.7)
         self.encoder_features = 64
-        self.water_features = 8
+        self.water_features = 128
         self.required_attack_ratio = 0.5
 

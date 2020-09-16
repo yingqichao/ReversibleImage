@@ -11,6 +11,7 @@ from torchvision import datasets, utils
 from network.Encoder_Localizer import Encoder_Localizer
 from network.Encoder_Decoder import Encoder_Decoder
 from config import Encoder_Localizer_config
+import torch.nn as nn
 
 # Directory path
 # os.chdir("..")
@@ -20,18 +21,21 @@ if __name__ =='__main__':
     print(device)
     # Hyper Parameters
     num_epochs = 10
-    batch_size = 8
+    batch_size = 2
     learning_rate = 0.0001
     beta = 5
+    use_dataset = 'COCO' # "ImageNet"
 
     # Mean and std deviation of imagenet dataset. Source: http://cs231n.stanford.edu/reports/2017/pdfs/101.pdf
-    # std = [0.229, 0.224, 0.225]
-    # mean = [0.485, 0.456, 0.406]
+    if use_dataset == 'COCO':
+        mean = [0.471, 0.448, 0.408]
+        std = [0.234, 0.239, 0.242]
+    else:
+        std = [0.229, 0.224, 0.225]
+        mean = [0.485, 0.456, 0.406]
 
     # TODO: Define train, validation and models
     MODELS_PATH = './output/models/'
-    # TRAIN_PATH = cwd+'/train/'
-    # VALID_PATH = cwd+'/valid/'
     VALID_PATH = './sample/valid_coco/'
     TRAIN_PATH = './sample/train_coco/'
     TEST_PATH = './sample/test_coco/'
@@ -47,7 +51,7 @@ if __name__ =='__main__':
         loss_all = loss_cover + B * loss_secret
         return loss_all, loss_cover, loss_secret
 
-    def localization_loss(pred_label, cropout_label, train_hidden, train_covers, beta=1,use_vgg=False):
+    def localization_loss(pred_label, cropout_label, train_hidden, train_covers, beta=1,use_vgg=True):
         ''' 自定义localization_loss '''
         numpy_watch_groundtruth = cropout_label.data.clone().detach().cpu().numpy()
         numpy_watch_predicted = pred_label.data.clone().detach().cpu().numpy()
@@ -59,6 +63,7 @@ if __name__ =='__main__':
             vgg_on_enc = vgg_loss(train_covers)
             loss_cover = torch.nn.functional.mse_loss(vgg_on_cov, vgg_on_enc)
         else:
+            # loss_fn = nn.MSELoss()
             loss_cover = torch.nn.functional.mse_loss(train_hidden, train_covers)
         loss_all = beta * loss_localization + loss_cover
         return loss_all, loss_localization, loss_cover
@@ -76,7 +81,7 @@ if __name__ =='__main__':
         '''Prints out an image given in tensor format.'''
 
         # img = denormalize(img, std, mean)
-        npimg = img.cpu().numpy()
+        npimg = img.detach().cpu().numpy()
         if img.shape[0] == 3:
             plt.imshow(np.transpose(npimg, (1, 2, 0)))
         plt.title('Example ' + str(idx) + ', lr=' + str(learning_rate) + ', B=' + str(beta)+' 隐藏图像 宿主图像 输出图像 提取得到的图像')
@@ -148,6 +153,9 @@ if __name__ =='__main__':
             print('Epoch [{0}/{1}], Average_loss: {2:.4f}'.format(
                 epoch + 1, num_epochs, mean_train_loss))
 
+            # Debug
+            # imshow(utils.make_grid(train_covers), 0, learning_rate=learning_rate, beta=beta)
+            # imshow(utils.make_grid(train_hidden), 0, learning_rate=learning_rate, beta=beta)
         return net, mean_train_loss, loss_history
 
 
@@ -163,11 +171,11 @@ if __name__ =='__main__':
         datasets.ImageFolder(
             TRAIN_PATH,
             transforms.Compose([
-                transforms.Scale(256),
-                transforms.RandomCrop(256),
+                transforms.Scale(512),
+                transforms.RandomCrop(512),
                 transforms.ToTensor(),
-                # transforms.Normalize(mean=mean,
-                #                      std=std)
+                transforms.Normalize(mean=mean,
+                                     std=std)
             ])), batch_size=batch_size, num_workers=1,
         pin_memory=True, shuffle=True, drop_last=True)
 
@@ -176,11 +184,11 @@ if __name__ =='__main__':
         datasets.ImageFolder(
             TEST_PATH,
             transforms.Compose([
-                transforms.Scale(256),
-                transforms.RandomCrop(256),
+                transforms.Scale(512),
+                transforms.RandomCrop(512),
                 transforms.ToTensor(),
-                # transforms.Normalize(mean=mean,
-                #                      std=std)
+                transforms.Normalize(mean=mean,
+                                     std=std)
             ])), batch_size=1, num_workers=1,
         pin_memory=True, shuffle=True, drop_last=True)
     if not skipTraining:
@@ -232,7 +240,7 @@ if __name__ =='__main__':
 
             # Creates img tensor
             # imgs = [test_secret.data,  test_cover.data, test_hidden.data, test_output.data] # 隐藏图像  宿主图像 输出图像 提取得到的图像
-            imgs = [test_secret.data, test_hidden.data]
+            imgs = [test_cover.data, test_hidden.data]
             imgs_tsor = torch.cat(imgs, 0)
 
             # Prints Images

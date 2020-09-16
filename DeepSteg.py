@@ -23,7 +23,7 @@ if __name__ =='__main__':
     device = torch.device("cuda")
     print(device)
     # Hyper Parameters
-    num_epochs = 3
+    num_epochs = 1
     batch_size = 2
     learning_rate = 0.0001
     beta = 1
@@ -37,16 +37,17 @@ if __name__ =='__main__':
     # TRAIN_PATH = cwd+'/train/'
     # VALID_PATH = cwd+'/valid/'
     VALID_PATH = './sample/valid_coco/'
-    TRAIN_PATH = './sample/train_coco/'
+    TRAIN_PATH = './sample/test_coco/'
     TEST_PATH = './sample/test_coco/'
     if not os.path.exists(MODELS_PATH): os.mkdir(MODELS_PATH)
 
 
-    def customized_loss(S_prime, C_prime, S, C, B):
+    def customized_loss(train_output, train_hidden, train_secrets, train_covers, B):
         ''' Calculates loss specified on the paper.'''
+        # train_output, train_hidden, train_secrets, train_covers
 
-        loss_cover = torch.nn.functional.mse_loss(C_prime, C)
-        loss_secret = torch.nn.functional.mse_loss(S_prime, S)
+        loss_cover = torch.nn.functional.mse_loss(train_hidden, train_covers)
+        loss_secret = torch.nn.functional.mse_loss(train_output, train_secrets)
         loss_all = loss_cover + B * loss_secret
         return loss_all, loss_cover, loss_secret
 

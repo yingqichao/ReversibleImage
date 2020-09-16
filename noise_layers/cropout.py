@@ -24,7 +24,8 @@ class Cropout(nn.Module):
         sum_attacked = 0
         cropout_mask = torch.zeros_like(noised_image)
         block_height, block_width = int(noised_image.shape[2] / 16), int(noised_image.shape[3] / 16)
-        cropout_label = torch.zeros((noised_image.shape[0], block_height, block_width), requires_grad=False)
+        cropout_label = torch.zeros((noised_image.shape[0], 2, block_height, block_width), requires_grad=False)
+        cropout_label[:, 1, :, :] = 1
         # 不断修改小块，直到修改面积至少为全图的50%
         while sum_attacked<self.config.min_required_block_portion:
             h_start, h_end, w_start, w_end, ratio = get_random_rectangle_inside(image=noised_image,
@@ -33,7 +34,8 @@ class Cropout(nn.Module):
             sum_attacked += ratio
             # 被修改的区域内赋值1, dims: batch channel height width
             cropout_mask[:, :, h_start:h_end, w_start:w_end] = 1
-            cropout_label[:, math.floor(h_start / 16):math.ceil(h_end / 16), math.floor(w_start / 16):math.ceil(w_end / 16)] = 1
+            cropout_label[:, 0, math.floor(h_start / 16):math.ceil(h_end / 16), math.floor(w_start / 16):math.ceil(w_end / 16)] = 1
+            cropout_label[:, 1, math.floor(h_start / 16):math.ceil(h_end / 16), math.floor(w_start / 16):math.ceil(w_end / 16)] = 0
 
 
 
