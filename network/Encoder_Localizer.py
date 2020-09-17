@@ -80,7 +80,7 @@ class LocalizeNetwork(nn.Module):
 
         self.last_conv = nn.Sequential(
             nn.Conv2d(512,2,kernel_size=1,stride=1),
-            # nn.BatchNorm2d(2),
+            nn.BatchNorm2d(2),
             nn.Sigmoid()
         )
 

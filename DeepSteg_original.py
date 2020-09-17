@@ -20,12 +20,14 @@ if __name__ =='__main__':
     device = torch.device("cuda")
     print(device)
     # Hyper Parameters
-    num_epochs = 10
+    num_epochs = 5
     batch_size = 2
     learning_rate = 0.0001
-    beta = 5
+    use_Vgg = False
     use_dataset = 'COCO' # "ImageNet"
-
+    beta = 10000
+    if use_Vgg:
+        beta = 5
     # Mean and std deviation of imagenet dataset. Source: http://cs231n.stanford.edu/reports/2017/pdfs/101.pdf
     if use_dataset == 'COCO':
         mean = [0.471, 0.448, 0.408]
@@ -64,7 +66,7 @@ if __name__ =='__main__':
             loss_cover = torch.nn.functional.mse_loss(vgg_on_cov, vgg_on_enc)
         else:
             # loss_fn = nn.MSELoss()
-            loss_cover = torch.nn.functional.mse_loss(train_hidden, train_covers)
+            loss_cover = torch.nn.functional.mse_loss(train_hidden*255, train_covers*255)
         loss_all = beta * loss_localization + loss_cover
         return loss_all, loss_localization, loss_cover
 
@@ -162,7 +164,7 @@ if __name__ =='__main__':
     # Setting
     config = Encoder_Localizer_config()
     isSelfRecovery = True
-    skipTraining = True
+    skipTraining = False
     # Creates net object
     net = Encoder_Localizer(config).to(device)
 

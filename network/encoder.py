@@ -24,7 +24,12 @@ class EncoderNetwork(nn.Module):
         # Size: 32->16
         self.Down4_conv = DoubleConv(256,512)
         self.Down4_pool = nn.MaxPool2d(2)
-        self.Conv5 = DoubleConv(512, 1024)
+        self.Conv5 = nn.Sequential(
+            DoubleConv(512, 1024),
+            DoubleConv(1024, 1024),
+            DoubleConv(1024, 1024),
+            DoubleConv(1024, 1024),
+        )
         # Size:16->32
         self.Up4_convT = nn.ConvTranspose2d(1024, 512, 2, stride=2)
         self.Up4_conv = DoubleConv(1024, 512)

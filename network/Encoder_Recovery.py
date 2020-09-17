@@ -49,36 +49,36 @@ def gaussian(tensor, device, mean=0, stddev=0.1):
 #         return out, out_noise
 
 
-class RecoveryNetwork(nn.Module):
-    def __init__(self, config=Encoder_Localizer_config()):
-        super(RecoveryNetwork, self).__init__()
-        self.config = config
-
-
-
-
-    def forward(self, r):
-        # 开始反卷积，并叠加原始层
-        # Size: 16->32
-        up4_convT = self.Up4_convT(embedded)
-        # merge4 = torch.cat([up4_convT, down4_c], dim=1)
-        up4_conv = self.Up4_conv(merge4)
-        # Size: 32->64
-        up3_convT = self.Up3_convT(up4_conv)
-        # merge3 = torch.cat([up3_convT, down3_c], dim=1)
-        up3_conv = self.Up3_conv(merge3)
-        # Size: 64->128
-        up2_convT = self.Up2_convT(up3_conv)
-        # merge2 = torch.cat([up2_convT, down2_c], dim=1)
-        up2_conv = self.Up2_conv(merge2)
-        # Size: 128->256
-        up1_convT = self.Up1_convT(up2_conv)
-        # merge1 = torch.cat([up1_convT, down1_c], dim=1)
-        up1_conv = self.Up1_conv(merge1)
-        out = self.final_conv(up1_conv)
-
-
-        return r1_conv
+# class RecoveryNetwork(nn.Module):
+#     def __init__(self, config=Encoder_Localizer_config()):
+#         super(RecoveryNetwork, self).__init__()
+#         self.config = config
+#
+#
+#
+#
+#     def forward(self, r):
+#         # 开始反卷积，并叠加原始层
+#         # Size: 16->32
+#         up4_convT = self.Up4_convT(embedded)
+#         # merge4 = torch.cat([up4_convT, down4_c], dim=1)
+#         up4_conv = self.Up4_conv(merge4)
+#         # Size: 32->64
+#         up3_convT = self.Up3_convT(up4_conv)
+#         # merge3 = torch.cat([up3_convT, down3_c], dim=1)
+#         up3_conv = self.Up3_conv(merge3)
+#         # Size: 64->128
+#         up2_convT = self.Up2_convT(up3_conv)
+#         # merge2 = torch.cat([up2_convT, down2_c], dim=1)
+#         up2_conv = self.Up2_conv(merge2)
+#         # Size: 128->256
+#         up1_convT = self.Up1_convT(up2_conv)
+#         # merge1 = torch.cat([up1_convT, down1_c], dim=1)
+#         up1_conv = self.Up1_conv(merge1)
+#         out = self.final_conv(up1_conv)
+#
+#
+#         return r1_conv
 
 
 # Join three networks in one module
@@ -93,7 +93,7 @@ class Encoder_Recovery(nn.Module):
         self.other_noise_layers.append(JpegCompression(device))
         self.other_noise_layers.append(Quantization(device))
 
-        self.recovery = RecoveryNetwork(config).to(device)
+        # self.recovery = RecoveryNetwork(config).to(device)
 
     def forward(self, secret, cover):
         # 得到Encode后的特征平面
