@@ -7,10 +7,10 @@ from network.double_conv import DoubleConv
 
 
 class EncoderNetwork(nn.Module):
-    def __init__(self, config=Encoder_Localizer_config()):
+    def __init__(self, is_embed_message=True, config=Encoder_Localizer_config()):
         super(EncoderNetwork, self).__init__()
         self.config = config
-
+        self.is_embed_message = is_embed_message
         # self.init = DoubleConv(3, 32)
         # Size: 256->128
         self.Down1_conv = DoubleConv(3,64)
@@ -61,10 +61,14 @@ class EncoderNetwork(nn.Module):
         down4_p = self.Down4_pool(down4_c)
         conv5 = self.Conv5(down4_p)
 
-        message = torch.ones(conv5.shape[0], self.config.water_features, conv5.shape[2], conv5.shape[3]).to(device)
-        # 嵌入一定信息，与down4合并
-        mid = torch.cat((conv5, message), 1)
-        embedded = self.after_concat_layer(mid)
+        if self.is_embed_message:
+            message = torch.ones(conv5.shape[0], self.config.water_features, conv5.shape[2], conv5.shape[3]).to(self.device)
+            # 嵌入一定信息，与down4合并
+            mid = torch.cat((conv5, message), 1)
+            embedded = self.after_concat_layer(mid)
+        else:
+            embedded = conv5
+
         # 开始反卷积，并叠加原始层
         # Size: 16->32
         up4_convT = self.Up4_convT(embedded)

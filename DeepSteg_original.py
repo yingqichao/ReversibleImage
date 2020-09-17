@@ -51,7 +51,7 @@ if __name__ =='__main__':
         loss_all = loss_cover + B * loss_secret
         return loss_all, loss_cover, loss_secret
 
-    def localization_loss(pred_label, cropout_label, train_hidden, train_covers, beta=1,use_vgg=True):
+    def localization_loss(pred_label, cropout_label, train_hidden, train_covers, beta=1,use_vgg=False):
         ''' 自定义localization_loss '''
         numpy_watch_groundtruth = cropout_label.data.clone().detach().cpu().numpy()
         numpy_watch_predicted = pred_label.data.clone().detach().cpu().numpy()
@@ -80,7 +80,7 @@ if __name__ =='__main__':
     def imshow(img, idx, learning_rate, beta):
         '''Prints out an image given in tensor format.'''
 
-        # img = denormalize(img, std, mean)
+        img = denormalize(img, std, mean)
         npimg = img.detach().cpu().numpy()
         if img.shape[0] == 3:
             plt.imshow(np.transpose(npimg, (1, 2, 0)))
@@ -162,7 +162,7 @@ if __name__ =='__main__':
     # Setting
     config = Encoder_Localizer_config()
     isSelfRecovery = True
-    skipTraining = False
+    skipTraining = True
     # Creates net object
     net = Encoder_Localizer(config).to(device)
 

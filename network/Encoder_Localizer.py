@@ -57,14 +57,13 @@ class LocalizeNetwork(nn.Module):
         channels = int(self.config.Width*self.config.Height/self.config.block_size/self.config.block_size)
         self.initialR3 = nn.Sequential(
             ConvBNRelu(3, self.config.decoder_channels),
-            nn.AvgPool2d(2),
+            nn.MaxPool2d(2),
             ConvBNRelu(self.config.decoder_channels, self.config.decoder_channels),
-            nn.AvgPool2d(2),
+            nn.MaxPool2d(2),
             ConvBNRelu(self.config.decoder_channels, self.config.decoder_channels),
-            nn.AvgPool2d(2),
+            nn.MaxPool2d(2),
             ConvBNRelu(self.config.decoder_channels, self.config.decoder_channels),
-            nn.AvgPool2d(2),
-
+            nn.MaxPool2d(2),
         )
         # Size: 256->128
         self.Down1_conv = DoubleConv(3, 64)
@@ -111,7 +110,7 @@ class Encoder_Localizer(nn.Module):
     def __init__(self,config=Encoder_Localizer_config(),crop_size=(0.5,0.5)):
         super(Encoder_Localizer, self).__init__()
         self.config = config
-        self.encoder = EncoderNetwork(config).to(device)
+        self.encoder = EncoderNetwork(is_embed_message=False,config=config).to(device)
 
         # self.decoder = DecoderNetwork(config).to(device)
         self.cropout_noise_layer = Cropout(self.config.crop_size,config).to(device)

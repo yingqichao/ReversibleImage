@@ -14,9 +14,7 @@ from network.double_conv import DoubleConv
 from network.encoder import EncoderNetwork
 import util.util as util
 
-device = torch.device("cuda")
-
-def gaussian(tensor, mean=0, stddev=0.1):
+def gaussian(tensor, device, mean=0, stddev=0.1):
     '''Adds random noise to a tensor.'''
 
     noise = torch.nn.init.normal_(torch.Tensor(tensor.size()).to(device), mean, stddev)
@@ -55,53 +53,29 @@ class RecoveryNetwork(nn.Module):
     def __init__(self, config=Encoder_Localizer_config()):
         super(RecoveryNetwork, self).__init__()
         self.config = config
-        channels = int(self.config.Width*self.config.Height/self.config.block_size/self.config.block_size)
-        self.initialR3 = nn.Sequential(
-            ConvBNRelu(3, self.config.decoder_channels),
-            nn.AvgPool2d(2),
-            ConvBNRelu(self.config.decoder_channels, self.config.decoder_channels),
-            nn.AvgPool2d(2),
-            ConvBNRelu(self.config.decoder_channels, self.config.decoder_channels),
-            nn.AvgPool2d(2),
-            ConvBNRelu(self.config.decoder_channels, self.config.decoder_channels),
-            nn.AvgPool2d(2),
 
-        )
-        # Size: 256->128
-        self.Down1_conv = DoubleConv(3, 64)
-        self.Down1_pool = nn.MaxPool2d(2)
-        # Size: 128->64
-        self.Down2_conv = DoubleConv(64, 128)
-        self.Down2_pool = nn.MaxPool2d(2)
-        # Size: 64->32
-        self.Down3_conv = DoubleConv(128, 256)
-        self.Down3_pool = nn.MaxPool2d(2)
-        # Size: 32->16
-        self.Down4_conv = DoubleConv(256, 512)
-        self.Down4_pool = nn.MaxPool2d(2)
 
-        self.last_conv = nn.Sequential(
-            nn.Conv2d(512,2,kernel_size=1,stride=1),
-            # nn.BatchNorm2d(2),
-            nn.Sigmoid()
-        )
 
 
     def forward(self, r):
-        # r1 = self.initialR3(r)
-        # Size: 256->128
-        down1_c = self.Down1_conv(r)
-        down1_p = self.Down1_pool(down1_c)
-        # Size: 128->64
-        down2_c = self.Down2_conv(down1_p)
-        down2_p = self.Down2_pool(down2_c)
-        # Size: 64->32
-        down3_c = self.Down3_conv(down2_p)
-        down3_p = self.Down3_pool(down3_c)
-        # Size: 32->16
-        down4_c = self.Down4_conv(down3_p)
-        down4_p = self.Down4_pool(down4_c)
-        r1_conv = self.last_conv(down4_p)
+        # 开始反卷积，并叠加原始层
+        # Size: 16->32
+        up4_convT = self.Up4_convT(embedded)
+        # merge4 = torch.cat([up4_convT, down4_c], dim=1)
+        up4_conv = self.Up4_conv(merge4)
+        # Size: 32->64
+        up3_convT = self.Up3_convT(up4_conv)
+        # merge3 = torch.cat([up3_convT, down3_c], dim=1)
+        up3_conv = self.Up3_conv(merge3)
+        # Size: 64->128
+        up2_convT = self.Up2_convT(up3_conv)
+        # merge2 = torch.cat([up2_convT, down2_c], dim=1)
+        up2_conv = self.Up2_conv(merge2)
+        # Size: 128->256
+        up1_convT = self.Up1_convT(up2_conv)
+        # merge1 = torch.cat([up1_convT, down1_c], dim=1)
+        up1_conv = self.Up1_conv(merge1)
+        out = self.final_conv(up1_conv)
 
 
         return r1_conv
@@ -112,7 +86,8 @@ class Encoder_Recovery(nn.Module):
     def __init__(self,config=Encoder_Localizer_config(),crop_size=(0.5,0.5)):
         super(Encoder_Recovery, self).__init__()
         self.config = config
-        self.encoder = EncoderNetwork(config).to(device)
+        device = config.device
+        self.encoder = EncoderNetwork(is_embed_message=False, config=config).to(device)
 
         self.other_noise_layers = [Identity()]
         self.other_noise_layers.append(JpegCompression(device))
@@ -133,7 +108,8 @@ class Encoder_Recovery(nn.Module):
 
         # 选择若干个块
         taken_blocks = set()
-        x_input = torch.zeros((x_1_attack.shape[0], x_1_attack.shape[0], self.block_size, self.block_size, self.min_required_block))
+        x_input = torch.zeros((x_1_attack.shape[0], x_1_attack.shape[1],
+                               self.config.block_size, self.config.block_size, self.config.min_required_block))
         while len(taken_blocks) < self.config.min_required_block:
             selected = int(util.random_float(0, self.num_blocks))
             if selected not in taken_blocks:
