@@ -12,7 +12,7 @@ from network.Encoder_Localizer import Encoder_Localizer
 from config import Encoder_Localizer_config
 import torch.nn as nn
 import torch.nn.functional as F
-import util
+from noise_layers.jpeg_compression import JpegCompression
 
 # Directory path
 # os.chdir("..")
@@ -22,7 +22,7 @@ if __name__ =='__main__':
     print(device)
     # Hyper Parameters
     num_epochs = 10
-    batch_size = 2
+    batch_size = 4
     learning_rate = 0.0001
     use_Vgg = False
     use_dataset = 'COCO' # "ImageNet"
@@ -30,7 +30,12 @@ if __name__ =='__main__':
     if use_Vgg:
         beta = 5
     # Mean and std deviation of imagenet dataset. Source: http://cs231n.stanford.edu/reports/2017/pdfs/101.pdf
-
+    if use_dataset == 'COCO':
+        mean = [0.471, 0.448, 0.408]
+        std = [0.234, 0.239, 0.242]
+    else:
+        std = [0.229, 0.224, 0.225]
+        mean = [0.485, 0.456, 0.406]
 
     # TODO: Define train, validation and models
     MODELS_PATH = './output/models/'
@@ -70,6 +75,25 @@ if __name__ =='__main__':
         return loss_all, loss_localization, loss_cover
 
 
+    def denormalize(image, std, mean):
+        ''' Denormalizes a tensor of images.'''
+
+        for t in range(image.shape[0]):
+            image[t, :, :] = (image[t, :, :] * std[t]) + mean[t]
+        return image
+
+
+    def imshow(img, idx, learning_rate, beta):
+        '''Prints out an image given in tensor format.'''
+
+        img = denormalize(img, std, mean)
+        npimg = img.detach().cpu().numpy()
+        if img.shape[0] == 3:
+            plt.imshow(np.transpose(npimg, (1, 2, 0)))
+        plt.title('Example ' + str(idx) + ', lr=' + str(learning_rate) + ', B=' + str(beta))
+        plt.show()
+        return
+
 
     def train_model(net, train_loader, beta, learning_rate,isSelfRecovery=True):
         # batch:3 epoch:2 data:2*3*224*224
@@ -95,10 +119,10 @@ if __name__ =='__main__':
                     train_secrets = data[len(data) // 2:]
                 else:
                     # self recovery
-                    train_covers = data[:]
-                    train_secrets = data[:]
-                    # train_covers = data[:len(data) // 2]
-                    # train_secrets = data[len(data) // 2:]
+                    # train_covers = data[:]
+                    # train_secrets = data[:]
+                    train_covers = data[:len(data) // 2]
+                    train_secrets = data[len(data) // 2:]
 
                 # Creates variable from secret and cover images
                 # train_cover作为tamper的图像
@@ -107,7 +131,7 @@ if __name__ =='__main__':
 
                 # Forward + Backward + Optimize
                 optimizer.zero_grad()
-                train_hidden, train_recovered, pred_label, cropout_label, _ = net(train_secrets, train_covers)
+                train_hidden, pred_label, cropout_label, _ = net(train_secrets, train_covers)
 
                 # MSE标签距离 loss
                 train_loss_all, train_loss_localization, train_loss_cover = \
@@ -144,7 +168,7 @@ if __name__ =='__main__':
     # Setting
     config = Encoder_Localizer_config()
     isSelfRecovery = True
-    skipTraining = False
+    skipTraining = True
     # Creates net object
     net = Encoder_Localizer(config).to(device)
 
@@ -156,8 +180,8 @@ if __name__ =='__main__':
                 transforms.Scale(512),
                 transforms.RandomCrop(512),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=config.mean,
-                                     std=config.std)
+                transforms.Normalize(mean=mean,
+                                     std=std)
             ])), batch_size=batch_size, num_workers=1,
         pin_memory=True, shuffle=True, drop_last=True)
 
@@ -169,8 +193,8 @@ if __name__ =='__main__':
                 transforms.Scale(512),
                 transforms.RandomCrop(512),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=config.mean,
-                                     std=config.std)
+                transforms.Normalize(mean=mean,
+                                     std=std)
             ])), batch_size=1, num_workers=1,
         pin_memory=True, shuffle=True, drop_last=True)
     if not skipTraining:
@@ -181,8 +205,8 @@ if __name__ =='__main__':
         plt.ylabel('Loss')
         plt.xlabel('Batch')
         plt.show()
-    else:
-        net.load_state_dict(torch.load(MODELS_PATH+'Epoch N10.pkl'))
+    # else:
+    #     net.load_state_dict(torch.load(MODELS_PATH+'Epoch N10.pkl'))
 
     # Switch to evaluate mode
     net.eval()
@@ -207,40 +231,44 @@ if __name__ =='__main__':
         test_secret = torch.tensor(test_secret, requires_grad=False).to(device)
         test_cover = torch.tensor(test_cover, requires_grad=False).to(device)
 
-        test_hidden, test_recovered, pred_label, cropout_label, selected_attack = net(test_secret, test_cover)
+        jpeg_layer = JpegCompression(device)
+        test_hidden = jpeg_layer(test_secret)
+        # test_hidden, pred_label, cropout_label, selected_attack = net(test_secret, test_cover)
         # MSE标签距离 loss
-        test_loss_all, test_loss_localization, test_loss_cover = \
-            localization_loss(pred_label, cropout_label, test_hidden, test_cover, beta=1)
+        # test_loss_all, test_loss_localization, test_loss_cover = \
+        #     localization_loss(pred_label, cropout_label, test_hidden, test_cover, beta=1)
 
         #     diff_S, diff_C = np.abs(np.array(test_output.data[0]) - np.array(test_secret.data[0])), np.abs(np.array(test_hidden.data[0]) - np.array(test_cover.data[0]))
 
         #     print (diff_S, diff_C)
 
         if idx < 10:
-            print('Test: Batch {0}/{1}. Total Loss {2:.4f}, Localization Loss {3:.4f}, Cover Loss {4:.4f} '.format(
-                idx + 1, len(train_loader), test_loss_all.data, test_loss_localization.data, test_loss_cover.data))
-            print('Selected: '+ selected_attack)
+            # print('Test: Batch {0}/{1}. Total Loss {2:.4f}, Localization Loss {3:.4f}, Cover Loss {4:.4f} '.format(
+            #     idx + 1, len(train_loader), test_loss_all.data, test_loss_localization.data, test_loss_cover.data))
+            # print('Selected: '+ selected_attack)
             # Creates img tensor
             # imgs = [test_secret.data,  test_cover.data, test_hidden.data, test_output.data] # 隐藏图像  宿主图像 输出图像 提取得到的图像
             imgs = [test_cover.data, test_hidden.data]
+            mse_loss = F.mse_loss(test_cover*255,test_hidden*255)
+            print("MSE loss: {0:.4f}".format(mse_loss.data))
             imgs_tsor = torch.cat(imgs, 0)
 
             # prints the whole tensor
             torch.set_printoptions(profile="full")
             print('----Figure {0}----'.format(idx + 1))
-            print('[Expected]')
-            print(pred_label.data)
-
-            print('[Real]')
-            print(cropout_label.data)
+            # print('[Expected]')
+            # print(pred_label.data)
+            #
+            # print('[Real]')
+            # print(cropout_label.data)
             print('------------------')
             # Prints Images
-            util.imshow(utils.make_grid(imgs_tsor), idx + 1, learning_rate=learning_rate, beta=beta,std=config.std,mean=config.mean)
+            imshow(utils.make_grid(imgs_tsor), idx + 1, learning_rate=learning_rate, beta=beta)
             # target_tensor = torch.tensor((pred_label.reshape(1,14,14).detach().cpu().numpy()*255).astype(np.uint8)).to(device)
             # imshow(target_tensor, idx+1, learning_rate=learning_rate, beta=beta)
 
 
-        test_losses.append(test_loss_all.data.cpu().numpy())
+        # test_losses.append(test_loss_all.data.cpu().numpy())
 
     mean_test_loss = np.mean(test_losses)
 

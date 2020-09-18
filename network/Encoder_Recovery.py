@@ -2,17 +2,13 @@
 import torch
 import torch.nn as nn
 from  config import Encoder_Localizer_config
-from noise_layers.cropout import Cropout
 from noise_layers.jpeg_compression import JpegCompression
 from noise_layers.quantization import Quantization
 from noise_layers.identity import Identity
 import numpy as np
-from network.conv_bn_relu import ConvBNRelu
-from network.down_sample import Down
-from network.up_sample import Up
-from network.double_conv import DoubleConv
 from network.encoder import EncoderNetwork
-import util.util as util
+import util as util
+
 
 def gaussian(tensor, device, mean=0, stddev=0.1):
     '''Adds random noise to a tensor.'''

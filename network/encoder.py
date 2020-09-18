@@ -67,7 +67,7 @@ class EncoderNetwork(nn.Module):
         conv5 = self.Conv5(down4_p)
 
         if self.is_embed_message:
-            message = torch.ones(conv5.shape[0], self.config.water_features, conv5.shape[2], conv5.shape[3]).to(self.device)
+            message = torch.ones(conv5.shape[0], self.config.water_features, conv5.shape[2], conv5.shape[3]).to(self.config.device)
             # 嵌入一定信息，与down4合并
             mid = torch.cat((conv5, message), 1)
             embedded = self.after_concat_layer(mid)
