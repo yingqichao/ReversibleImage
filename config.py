@@ -17,3 +17,4 @@ class Encoder_Localizer_config():
         self.water_features = 128
         self.required_attack_ratio = 0.5
         self.device = torch.device("cuda")
+        self.num_classes = 2

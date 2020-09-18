@@ -44,7 +44,7 @@ class EncoderNetwork(nn.Module):
         self.Up1_convT = nn.ConvTranspose2d(128, 64, 2, stride=2)
         self.Up1_conv = DoubleConv(128, 64)
         # 最后一个1x1卷积层得到输出
-        self.final_conv = nn.Conv2d(64, 3, 1)
+        self.final_conv = nn.Conv2d(64+3, 3, 1)
         # 随机嵌入信息卷积到图中
         self.after_concat_layer = ConvBNRelu(1024+self.config.water_features, 1024)
 
@@ -91,5 +91,6 @@ class EncoderNetwork(nn.Module):
         up1_convT = self.Up1_convT(up2_conv)
         merge1 = torch.cat([up1_convT, down1_c], dim=1)
         up1_conv = self.Up1_conv(merge1)
-        out = self.final_conv(up1_conv)
+        merge0 = torch.cat([up1_conv, p], dim=1)
+        out = self.final_conv(merge0)
         return out

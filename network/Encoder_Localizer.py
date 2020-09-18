@@ -78,11 +78,18 @@ class LocalizeNetwork(nn.Module):
         self.Down4_conv = DoubleConv(256, 512)
         self.Down4_pool = nn.MaxPool2d(2)
 
-        self.last_conv = nn.Sequential(
-            nn.Conv2d(512,2,kernel_size=1,stride=1),
-            nn.BatchNorm2d(2),
-            nn.Sigmoid()
-        )
+        if self.config.num_classes == 2:
+            self.last_conv = nn.Sequential(
+                nn.Conv2d(512,2,kernel_size=1,stride=1),
+                nn.BatchNorm2d(2),
+                nn.Sigmoid()
+            )
+        else:
+            self.last_conv = nn.Sequential(
+                nn.Conv2d(512, 1, kernel_size=1, stride=1),
+                nn.BatchNorm2d(1),
+                nn.Sigmoid()
+            )
 
 
     def forward(self, r):
@@ -107,14 +114,16 @@ class LocalizeNetwork(nn.Module):
 
 # Join three networks in one module
 class Encoder_Localizer(nn.Module):
-    def __init__(self,config=Encoder_Localizer_config(),crop_size=(0.5,0.5)):
+    def __init__(self,config=Encoder_Localizer_config(),add_other_noise=True):
         super(Encoder_Localizer, self).__init__()
         self.config = config
+        self.add_other_noise = add_other_noise
         self.encoder = EncoderNetwork(is_embed_message=False,config=config).to(device)
 
         # self.decoder = DecoderNetwork(config).to(device)
         self.cropout_noise_layer = Cropout(self.config.crop_size,config).to(device)
 
+        self.jpeg_layer = JpegCompression(device)
         self.other_noise_layers = [Identity()]
         self.other_noise_layers.append(JpegCompression(device))
         self.other_noise_layers.append(Quantization(device))
@@ -129,9 +138,22 @@ class Encoder_Localizer(nn.Module):
         # 添加Cropout噪声，cover是跟secret无关的图
         x_1_crop, cropout_label = self.cropout_noise_layer(x_1, cover)
         # 添加一般噪声：Gaussian JPEG 等（optional）
-        random_noise_layer = np.random.choice(self.other_noise_layers, 1)[0]
-        x_1_crop_attacked = random_noise_layer(x_1_crop)
+        x_1_crop_attacked = self.jpeg_layer(x_1_crop)
+        # if self.add_other_noise:
+        #     #layer_num = np.random.choice(2)
+        #     random_noise_layer = np.random.choice(self.other_noise_layers,1)[0]
+        #     x_1_crop_attacked = random_noise_layer(x_1_crop)
+        # else:
+        #     # 固定加JPEG攻击或者原图
+        #     layer_num = 1
+        #     random_noise_layer = self.other_noise_layers[layer_num]
+        #     x_1_crop_attacked = random_noise_layer(x_1_crop)
 
         #如果不添加其他攻击，就是x_1_crop，否则是x_1_crop_attacked
         pred_label = self.localize(x_1_crop_attacked)
-        return x_1, pred_label, cropout_label
+
+        # 开始第二个网络：根据部分信息恢复原始图像
+        #x_2 = x_1_crop_attacked * pred_label
+
+
+        return x_1, pred_label, cropout_label, self.jpeg_layer.__class__.__name__
