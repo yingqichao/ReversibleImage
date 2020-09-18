@@ -22,7 +22,8 @@ if __name__ =='__main__':
     print(device)
     # Hyper Parameters
     num_epochs = 10
-    batch_size = 2
+    train_batch_size = 2
+    test_batch_size = 2
     learning_rate = 0.0001
     use_Vgg = False
     use_dataset = 'COCO' # "ImageNet"
@@ -30,7 +31,6 @@ if __name__ =='__main__':
     if use_Vgg:
         beta = 5
     # Mean and std deviation of imagenet dataset. Source: http://cs231n.stanford.edu/reports/2017/pdfs/101.pdf
-
 
     # TODO: Define train, validation and models
     MODELS_PATH = './output/models/'
@@ -54,7 +54,7 @@ if __name__ =='__main__':
         ''' 自定义localization_loss '''
         numpy_watch_groundtruth = cropout_label.data.clone().detach().cpu().numpy()
         numpy_watch_predicted = pred_label.data.clone().detach().cpu().numpy()
-        if config.num_classes==2:
+        if config.num_classes == 2:
             loss_localization = F.binary_cross_entropy(pred_label, cropout_label)
         else:
             loss_localization = criterion(pred_label, cropout_label)
@@ -141,10 +141,77 @@ if __name__ =='__main__':
         return net, mean_train_loss, loss_history
 
 
+    def test_model(net, test_loader, beta, learning_rate, isSelfRecovery=True):
+        # Switch to evaluate mode
+
+        net.eval()
+
+        test_losses = []
+        # Show images
+        for idx, test_batch in enumerate(test_loader):
+            # Saves images
+            data, _ = test_batch
+
+            # Saves secret images and secret covers
+            if not isSelfRecovery:
+                test_secret = data[:len(data) // 2]
+                test_cover = data[len(data) // 2:]
+            else:
+                # Self Recovery
+                test_secret = data[:len(data) // 2]
+                test_cover = data[len(data) // 2:]
+                # test_secret = data[:]
+                # test_cover = data[:]
+
+            # Creates variable from secret and cover images
+            test_secret = torch.tensor(test_secret, requires_grad=False).to(device)
+            test_cover = torch.tensor(test_cover, requires_grad=False).to(device)
+
+            test_hidden, test_recovered, pred_label, cropout_label, selected_attack = net(test_secret, test_cover,
+                                                                                          is_test=False)
+            # MSE标签距离 loss
+            test_loss_all, test_loss_localization, test_loss_cover = \
+                localization_loss(pred_label, cropout_label, test_hidden, test_cover, beta=1)
+
+            #     diff_S, diff_C = np.abs(np.array(test_output.data[0]) - np.array(test_secret.data[0])), np.abs(np.array(test_hidden.data[0]) - np.array(test_cover.data[0]))
+
+            #     print (diff_S, diff_C)
+
+            if idx < 10:
+                print('Test: Batch {0}/{1}. Total Loss {2:.4f}, Localization Loss {3:.4f}, Cover Loss {4:.4f} '.format(
+                    idx + 1, len(train_loader), test_loss_all.data, test_loss_localization.data, test_loss_cover.data))
+                print('Selected: ' + selected_attack)
+                # Creates img tensor
+                # imgs = [test_secret.data,  test_cover.data, test_hidden.data, test_output.data] # 隐藏图像  宿主图像 输出图像 提取得到的图像
+                imgs = [test_secret.data, test_hidden.data]
+                imgs_tsor = torch.cat(imgs, 0)
+
+                # prints the whole tensor
+                torch.set_printoptions(profile="full")
+                print('----Figure {0}----'.format(idx + 1))
+                print('[Expected]')
+                print(pred_label.data)
+
+                print('[Real]')
+                print(cropout_label.data)
+                print('------------------')
+                # Prints Images
+                util.imshow(utils.make_grid(imgs_tsor), idx + 1, learning_rate=learning_rate, beta=beta, std=config.std,
+                            mean=config.mean)
+                # target_tensor = torch.tensor((pred_label.reshape(1,14,14).detach().cpu().numpy()*255).astype(np.uint8)).to(device)
+                # imshow(target_tensor, idx+1, learning_rate=learning_rate, beta=beta)
+
+            test_losses.append(test_loss_all.data.cpu().numpy())
+
+        mean_test_loss = np.mean(test_losses)
+
+        print('Average loss on test set: {:.2f}'.format(mean_test_loss))
+
+    # ------------------------------------ Begin ---------------------------------------
     # Setting
     config = Encoder_Localizer_config()
     isSelfRecovery = True
-    skipTraining = False
+    skipTraining = True
     # Creates net object
     net = Encoder_Localizer(config).to(device)
 
@@ -158,7 +225,7 @@ if __name__ =='__main__':
                 transforms.ToTensor(),
                 transforms.Normalize(mean=config.mean,
                                      std=config.std)
-            ])), batch_size=batch_size, num_workers=1,
+            ])), batch_size=train_batch_size, num_workers=1,
         pin_memory=True, shuffle=True, drop_last=True)
 
     # Creates test set
@@ -171,7 +238,7 @@ if __name__ =='__main__':
                 transforms.ToTensor(),
                 transforms.Normalize(mean=config.mean,
                                      std=config.std)
-            ])), batch_size=1, num_workers=1,
+            ])), batch_size=test_batch_size, num_workers=1,
         pin_memory=True, shuffle=True, drop_last=True)
     if not skipTraining:
         net, mean_train_loss, loss_history = train_model(net, train_loader, beta, learning_rate, isSelfRecovery)
@@ -184,64 +251,4 @@ if __name__ =='__main__':
     else:
         net.load_state_dict(torch.load(MODELS_PATH+'Epoch N10.pkl'))
 
-    # Switch to evaluate mode
-    net.eval()
-
-    test_losses = []
-    # Show images
-    for idx, test_batch in enumerate(test_loader):
-        # Saves images
-        data, _ = test_batch
-
-        # Saves secret images and secret covers
-        if not isSelfRecovery:
-            test_secret = data[:len(data) // 2]
-            test_cover = data[len(data) // 2:]
-        else:
-            # Self Recovery
-            test_secret = data[:]
-            test_cover = data[:]
-
-
-        # Creates variable from secret and cover images
-        test_secret = torch.tensor(test_secret, requires_grad=False).to(device)
-        test_cover = torch.tensor(test_cover, requires_grad=False).to(device)
-
-        test_hidden, test_recovered, pred_label, cropout_label, selected_attack = net(test_secret, test_cover)
-        # MSE标签距离 loss
-        test_loss_all, test_loss_localization, test_loss_cover = \
-            localization_loss(pred_label, cropout_label, test_hidden, test_cover, beta=1)
-
-        #     diff_S, diff_C = np.abs(np.array(test_output.data[0]) - np.array(test_secret.data[0])), np.abs(np.array(test_hidden.data[0]) - np.array(test_cover.data[0]))
-
-        #     print (diff_S, diff_C)
-
-        if idx < 10:
-            print('Test: Batch {0}/{1}. Total Loss {2:.4f}, Localization Loss {3:.4f}, Cover Loss {4:.4f} '.format(
-                idx + 1, len(train_loader), test_loss_all.data, test_loss_localization.data, test_loss_cover.data))
-            print('Selected: '+ selected_attack)
-            # Creates img tensor
-            # imgs = [test_secret.data,  test_cover.data, test_hidden.data, test_output.data] # 隐藏图像  宿主图像 输出图像 提取得到的图像
-            imgs = [test_cover.data, test_hidden.data]
-            imgs_tsor = torch.cat(imgs, 0)
-
-            # prints the whole tensor
-            torch.set_printoptions(profile="full")
-            print('----Figure {0}----'.format(idx + 1))
-            print('[Expected]')
-            print(pred_label.data)
-
-            print('[Real]')
-            print(cropout_label.data)
-            print('------------------')
-            # Prints Images
-            util.imshow(utils.make_grid(imgs_tsor), idx + 1, learning_rate=learning_rate, beta=beta,std=config.std,mean=config.mean)
-            # target_tensor = torch.tensor((pred_label.reshape(1,14,14).detach().cpu().numpy()*255).astype(np.uint8)).to(device)
-            # imshow(target_tensor, idx+1, learning_rate=learning_rate, beta=beta)
-
-
-        test_losses.append(test_loss_all.data.cpu().numpy())
-
-    mean_test_loss = np.mean(test_losses)
-
-    print('Average loss on test set: {:.2f}'.format(mean_test_loss))
+    test_model(net, test_loader, beta, learning_rate, isSelfRecovery=True)

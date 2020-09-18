@@ -17,7 +17,7 @@ class Cropout(nn.Module):
         self.height_ratio_range, self.width_ratio_range = shape[0], shape[1]
         self.device = device
 
-    def forward(self, embedded_image,cover_image=None):
+    def forward(self, embedded_image,cover_image=None, is_test=False):
         # noised_image = noised_and_cover[0]
         # cover_image = noised_and_cover[1]
         if cover_image is not None:
@@ -59,11 +59,5 @@ class Cropout(nn.Module):
         numpy_conducted = cropout_mask.clone().detach().cpu().numpy()
         numpy_groundtruth = cropout_label.data.clone().detach().cpu().numpy()
 
-        #校验：输出图片
-        # npimg = noised_image.clone().detach().cpu().numpy()
-        # if noised_image.shape[0] == 3:
-        #     plt.imshow(np.transpose(npimg, (1, 2, 0)))
-        # plt.title('Example ')
-        # plt.show()
         return tampered_image, cropout_label.to(self.device)
 

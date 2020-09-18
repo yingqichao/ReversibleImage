@@ -52,12 +52,14 @@ def gaussian(tensor, mean=0, stddev=0.1):
 
 # Join three networks in one module
 class Encoder_Localizer(nn.Module):
-    def __init__(self,config=Encoder_Localizer_config(),add_other_noise=False):
+    def __init__(self, config=Encoder_Localizer_config(),add_other_noise=False,
+                 train_first_network=True, train_second_network=False):
         super(Encoder_Localizer, self).__init__()
         self.config = config
         self.add_other_noise = add_other_noise
         self.encoder = EncoderNetwork(is_embed_message=True,config=config).to(device)
-
+        self.train_first_network = train_first_network
+        self.train_second_network = train_second_network
         # self.decoder = DecoderNetwork(config).to(device)
         self.cropout_noise_layer = Cropout(self.config.crop_size,config).to(device)
 
@@ -71,43 +73,49 @@ class Encoder_Localizer(nn.Module):
 
         self.localize = LocalizeNetwork(config).to(device)
 
-    def forward(self, secret, cover):
+    def forward(self, secret, cover, is_test=True):
         # 得到Encode后的特征平面
-        x_1 = self.encoder(secret)
+        x_1_out = self.encoder(secret)
 
         # Decode得到近似原图，这里的x_2_noise为添加高斯噪声后的结果
         # x_2, x_2_noise = self.decoder(x_1)
 
+        # 训练第一个网络：Localize
+        pred_label, cropout_label = None, None
         # 添加Cropout噪声，cover是跟secret无关的图
-        x_1_crop, cropout_label = self.cropout_noise_layer(x_1, cover)
+        if self.train_first_network:
+            x_1_crop, cropout_label = self.cropout_noise_layer(x_1_out, cover, is_test)
 
 
-        # 添加一般噪声：Gaussian JPEG 等（optional）
-        # x_1_crop_attacked = self.jpeg_layer(x_1_crop)
-        if self.add_other_noise:
-            #layer_num = np.random.choice(2)
-            random_noise_layer = np.random.choice(self.other_noise_layers,0)[0]
-            x_1_crop_attacked = random_noise_layer(x_1_crop)
-        else:
-            # 固定加JPEG攻击（1），或者原图（0）
+            # 添加一般噪声：Gaussian JPEG 等（optional）
+            # x_1_crop_attacked = self.jpeg_layer(x_1_crop)
+            if self.add_other_noise:
+                #layer_num = np.random.choice(2)
+                random_noise_layer = np.random.choice(self.other_noise_layers,0)[0]
+                x_1_attack = random_noise_layer(x_1_crop)
+            else:
+                # 固定加JPEG攻击（1），或者原图（0）
+                layer_num = 1
+                random_noise_layer = self.other_noise_layers[layer_num]
+                x_1_attack = random_noise_layer(x_1_crop)
+
+            # Test
+            if is_test:
+                imgs = [x_1_attack.data, secret.data]
+                imgs_tsor = torch.cat(imgs, 0)
+                util.imshow(utils.make_grid(imgs_tsor), 0, learning_rate=0.0001, beta=5,std=self.config.std,mean=self.config.mean)
+
+            #如果不添加其他攻击，就是x_1_crop，否则是x_1_crop_attacked
+            pred_label = self.localize(x_1_attack)
+
+        x_2_out = None
+        # 训练第二个网络：根据部分信息恢复原始图像，这里不乘以之前的pred_label（防止网络太深）
+        if self.train_second_network:
             layer_num = 1
-            random_noise_layer = self.other_noise_layers[layer_num]
-            x_1_crop_attacked = random_noise_layer(x_1_crop)
+            random_noise_layer_again = self.other_noise_layers_again[layer_num]
+            x_2_jpeg = random_noise_layer_again(x_1_crop)
+            x_2_crop, _ = self.cropout_noise_layer(x_2_jpeg)
+            # 经过类U-net得到恢复图像
+            x_2_out = self.encoder(x_2_crop)
 
-        # Test
-        # imgs = [x_1_crop_attacked.data, secret.data]
-        # imgs_tsor = torch.cat(imgs, 0)
-        # util.imshow(utils.make_grid(imgs_tsor), 0, learning_rate=0.0001, beta=5,std=self.config.std,mean=self.config.mean)
-
-        #如果不添加其他攻击，就是x_1_crop，否则是x_1_crop_attacked
-        pred_label = self.localize(x_1_crop_attacked)
-
-        # 开始第二个网络：根据部分信息恢复原始图像，这里不乘以之前的pred_label（防止网络太深）
-        layer_num = 1
-        random_noise_layer_again = self.other_noise_layers_again[layer_num]
-        x_2_jpeg = random_noise_layer_again(x_1_crop)
-        x_2_crop, _ = self.cropout_noise_layer(x_2_jpeg)
-        # 经过类U-net得到恢复图像
-        x_2_out = self.encoder(x_2_crop)
-
-        return x_1, x_2_out, pred_label, cropout_label, self.jpeg_layer.__class__.__name__
+        return x_1_out, x_2_out, pred_label, cropout_label, self.jpeg_layer.__class__.__name__
