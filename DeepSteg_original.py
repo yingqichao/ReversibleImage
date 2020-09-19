@@ -94,76 +94,86 @@ if __name__ =='__main__':
 
     def train_model(net, train_loader, beta, learning_rate,isSelfRecovery=True):
         # batch:3 epoch:2 data:2*3*224*224
+        with open('./Train_result.txt', 'w') as f:
+            # Save optimizer
+            # optimizer = optim.Adam(net.parameters(), lr=learning_rate)
+            optimizer = optim.RMSprop(net.parameters(), lr=learning_rate, weight_decay=1e-8, momentum=0.9)
+            # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=2)
 
-        # Save optimizer
-        # optimizer = optim.Adam(net.parameters(), lr=learning_rate)
-        optimizer = optim.RMSprop(net.parameters(), lr=learning_rate, weight_decay=1e-8, momentum=0.9)
-        # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=2)
+            loss_history = []
+            # Iterate over batches performing forward and backward passes
+            for epoch in range(num_epochs):
 
-        loss_history = []
-        # Iterate over batches performing forward and backward passes
-        for epoch in range(num_epochs):
+                # Train mode
+                net.train()
 
-            # Train mode
-            net.train()
+                train_losses = []
+                train_recovered, train_hidden, train_covers = None, None, None
+                # Train one epoch
+                for idx, train_batch in enumerate(train_loader):
+                    data, _ = train_batch
 
-            train_losses = []
-            # Train one epoch
-            for idx, train_batch in enumerate(train_loader):
-                data, _ = train_batch
+                    # Saves secret images and secret covers
+                    if not isSelfRecovery:
+                        train_covers = data[:len(data) // 2]
+                        train_secrets = data[len(data) // 2:]
+                    else:
+                        # self recovery
+                        train_covers = data[:]
+                        train_secrets = data[:]
+                        # train_covers = data[:]
+                        # train_secrets = data[:]
 
-                # Saves secret images and secret covers
-                if not isSelfRecovery:
-                    train_covers = data[:len(data) // 2]
-                    train_secrets = data[len(data) // 2:]
-                else:
-                    # self recovery
-                    train_covers = data[:]
-                    train_secrets = data[:]
-                    # train_covers = data[:]
-                    # train_secrets = data[:]
+                    # Creates variable from secret and cover images
+                    # train_cover作为tamper的图像
+                    #train_secrets = train_secrets.to(device)
+                    train_covers = train_covers.to(device)
 
-                # Creates variable from secret and cover images
-                # train_cover作为tamper的图像
-                train_secrets = train_secrets.to(device)
-                train_covers = train_covers.to(device)
-                # train_secrets = torch.tensor(train_secrets, requires_grad=False).to(device)
-                # train_covers = torch.tensor(train_covers, requires_grad=False).to(device)
 
-                # Forward + Backward + Optimize
-                optimizer.zero_grad()
-                train_hidden, train_recovered, pred_label, cropout_label, cropout_label_2, _ = net(train_secrets, train_covers)
+                    # Forward + Backward + Optimize
+                    optimizer.zero_grad()
+                    train_hidden, train_recovered, pred_label, cropout_label, cropout_label_2, _ = net(train_covers, train_covers)
 
-                # MSE标签距离 loss
-                train_loss_all, train_loss_localization, train_loss_cover, train_loss_recover = \
-                    localization_loss(pred_label, cropout_label, cropout_label_2, train_hidden, train_covers, train_recovered)
+                    # MSE标签距离 loss
+                    train_loss_all, train_loss_localization, train_loss_cover, train_loss_recover = \
+                        localization_loss(pred_label, cropout_label, cropout_label_2, train_hidden, train_covers, train_recovered)
 
-                # Calculate loss and perform backprop
-                # train_loss, train_loss_cover, train_loss_secret = customized_loss(train_output, train_hidden, train_secrets,
-                #                                                                   train_covers, beta)
-                train_loss_all.backward()
-                optimizer.step()
+                    # Calculate loss and perform backprop
+                    # train_loss, train_loss_cover, train_loss_secret = customized_loss(train_output, train_hidden, train_secrets,
+                    #                                                                   train_covers, beta)
+                    train_loss_all.backward()
+                    optimizer.step()
 
-                # Saves training loss
-                train_losses.append(train_loss_all.data.cpu().numpy())
-                loss_history.append(train_loss_all.data.cpu().numpy())
+                    # Saves training loss
+                    train_losses.append(train_loss_all.data.cpu().numpy())
+                    loss_history.append(train_loss_all.data.cpu().numpy())
 
-                if idx % 8==7:
-                # Prints mini-batch losses
-                    print('Net 1 Epoch {0}/{1} Training: Batch {2}/{3}. Total Loss {4:.4f}, Localization Loss {5:.4f}, Cover Loss {6:.4f}, Recover Loss {7:.4f} '
-                        .format(epoch, num_epochs, idx + 1, len(train_loader), train_loss_all.data, train_loss_localization.data, train_loss_cover.data,train_loss_recover.data))
+                    if idx % 8==7:
+                        str = 'Net 1 Epoch {0}/{1} Training: Batch {2}/{3}. Total Loss {4:.4f}, Localization Loss {5:.4f}, Cover Loss {6:.4f}, Recover Loss {7:.4f} '\
+                            .format(epoch, num_epochs, idx + 1, len(train_loader), train_loss_all.data, train_loss_localization.data, train_loss_cover.data,train_loss_recover.data)
+                        f.write(str+'\n')
+                        print(str)
 
-            torch.save(net.state_dict(), MODELS_PATH + 'Epoch N{}.pkl'.format(epoch + 1))
+                torch.save(net.state_dict(), MODELS_PATH + 'Epoch N{}.pkl'.format(epoch + 1))
+                # 保存图片
+                for i in range(train_recovered.shape[0]):
+                    util.save_images(train_recovered[i].cpu(), 'epoch-recovery-{}.png'.format(epoch), './Images', std=config.std,
+                                     mean=config.mean)
+                    util.save_images(train_hidden[i].cpu(), 'epoch-hidden-{}.png'.format(epoch), './Images', std=config.std,
+                                     mean=config.mean)
+                    util.save_images(train_covers[i].cpu(), 'epoch-covers-{}.png'.format(epoch), './Images', std=config.std,
+                                     mean=config.mean)
 
-            mean_train_loss = np.mean(train_losses)
 
-            # Prints epoch average loss
-            print('Epoch [{0}/{1}], Average_loss: {2:.4f}'.format(
-                epoch + 1, num_epochs, mean_train_loss))
+                mean_train_loss = np.mean(train_losses)
 
-            # Debug
-            # imshow(utils.make_grid(train_covers), 0, learning_rate=learning_rate, beta=beta)
-            # imshow(utils.make_grid(train_hidden), 0, learning_rate=learning_rate, beta=beta)
+                # Prints epoch average loss
+                print('Epoch [{0}/{1}], Average_loss: {2:.4f}'.format(
+                    epoch + 1, num_epochs, mean_train_loss))
+
+                # Debug
+                # imshow(utils.make_grid(train_covers), 0, learning_rate=learning_rate, beta=beta)
+                # imshow(utils.make_grid(train_hidden), 0, learning_rate=learning_rate, beta=beta)
         return net, mean_train_loss, loss_history
 
 
