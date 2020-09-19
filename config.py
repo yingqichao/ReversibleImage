@@ -19,8 +19,8 @@ class Encoder_Localizer_config():
         # localization cover recover
         self.beta = (5000,1,1)
         self.num_epochs = 10
-        self.train_batch_size = 2
-        self.test_batch_size = 2
+        self.train_batch_size = 4
+        self.test_batch_size = 1
         self.learning_rate = 0.0001
         self.use_Vgg = False
         self.use_dataset = 'COCO'  # "ImageNet"
