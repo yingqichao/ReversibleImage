@@ -17,9 +17,8 @@ class Cropout(nn.Module):
         self.height_ratio_range, self.width_ratio_range = shape[0], shape[1]
         self.device = device
 
-    def forward(self, embedded_image,cover_image=None, is_test=False):
-        # noised_image = noised_and_cover[0]
-        # cover_image = noised_and_cover[1]
+    def forward(self, embedded_image,cover_image=None):
+
         if cover_image is not None:
             assert embedded_image.shape == cover_image.shape
         sum_attacked = 0
@@ -48,16 +47,13 @@ class Cropout(nn.Module):
 
 
         # 生成label：被修改区域对应的8*8小块赋值为1, height/width
-        # 一维
-        # cropout_label = torch.zeros((noised_image.shape[0],block_height*block_width), requires_grad=False)
-        # for row in range(int(h_start/16),int(h_end/16)):
-        #     cropout_label[:, row*block_width+int(w_start/16):row*block_width+int(w_end/16)] = 1
+
         if cover_image is not None:
             tampered_image = embedded_image * (1-cropout_mask) + cover_image * cropout_mask
         else:
             tampered_image = embedded_image * (1-cropout_mask)
-        numpy_conducted = cropout_mask.clone().detach().cpu().numpy()
-        numpy_groundtruth = cropout_label.data.clone().detach().cpu().numpy()
+        # numpy_conducted = cropout_mask.clone().detach().cpu().numpy()
+        # numpy_groundtruth = cropout_label.data.clone().detach().cpu().numpy()
 
-        return tampered_image, cropout_label.to(self.device)
+        return tampered_image, cropout_label.to(self.device), cropout_mask
 

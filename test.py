@@ -251,7 +251,6 @@ if __name__ =='__main__':
             imgs = [test_cover.data, test_hidden.data]
             mse_loss = F.mse_loss(test_cover*255,test_hidden*255)
             print("MSE loss: {0:.4f}".format(mse_loss.data))
-            imgs_tsor = torch.cat(imgs, 0)
 
             # prints the whole tensor
             torch.set_printoptions(profile="full")
@@ -263,7 +262,7 @@ if __name__ =='__main__':
             # print(cropout_label.data)
             print('------------------')
             # Prints Images
-            imshow(utils.make_grid(imgs_tsor), idx + 1, learning_rate=learning_rate, beta=beta)
+            imshow(imgs, idx + 1, learning_rate=learning_rate, beta=beta)
             # target_tensor = torch.tensor((pred_label.reshape(1,14,14).detach().cpu().numpy()*255).astype(np.uint8)).to(device)
             # imshow(target_tensor, idx+1, learning_rate=learning_rate, beta=beta)
 

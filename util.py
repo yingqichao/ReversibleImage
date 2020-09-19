@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
-
+from torchvision import datasets, utils
+import torch
 
 def random_float(min, max):
     """
@@ -19,13 +20,14 @@ def denormalize(image, std, mean):
     return image
 
 
-def imshow(img, idx, learning_rate, beta, std, mean):
+def imshow(input_img, text, std, mean):
     '''Prints out an image given in tensor format.'''
-
+    imgs_tsor = torch.cat(input_img, 0)
+    img = utils.make_grid(imgs_tsor)
     img = denormalize(img, std, mean)
     npimg = img.detach().cpu().numpy()
     if img.shape[0] == 3:
         plt.imshow(np.transpose(npimg, (1, 2, 0)))
-    plt.title('Example ' + str(idx) + ', lr=' + str(learning_rate) + ', B=' + str(beta))
+    plt.title(text)
     plt.show()
     return
