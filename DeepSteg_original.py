@@ -157,11 +157,11 @@ if __name__ =='__main__':
                 torch.save(net.state_dict(), MODELS_PATH + 'Epoch N{}.pkl'.format(epoch + 1))
                 # 保存图片
                 for i in range(train_recovered.shape[0]):
-                    util.save_images(train_recovered[i].cpu(), 'epoch-recovery-{}.png'.format(epoch), './Images', std=config.std,
+                    util.save_images(train_recovered[i].cpu(), 'epoch-recovery-{0}-{1}.png'.format(epoch,i), './Images', std=config.std,
                                      mean=config.mean)
-                    util.save_images(train_hidden[i].cpu(), 'epoch-hidden-{}.png'.format(epoch), './Images', std=config.std,
+                    util.save_images(train_hidden[i].cpu(), 'epoch-hidden-{0}-{1}.png'.format(epoch,i), './Images', std=config.std,
                                      mean=config.mean)
-                    util.save_images(train_covers[i].cpu(), 'epoch-covers-{}.png'.format(epoch), './Images', std=config.std,
+                    util.save_images(train_covers[i].cpu(), 'epoch-covers-{0}-{1}png'.format(epoch,i), './Images', std=config.std,
                                      mean=config.mean)
 
 
