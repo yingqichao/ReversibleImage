@@ -86,7 +86,7 @@ class Encoder_Localizer(nn.Module):
         pred_label, cropout_label = None, None
         # 添加Cropout噪声，cover是跟secret无关的图
         if self.train_first_network:
-            x_1_crop, cropout_label, _ = self.cropout_noise_layer(x_1_out)
+            x_1_crop, cropout_label, _ = self.cropout_noise_layer(x_1_out,Another)
 
 
             # 添加一般噪声：Gaussian JPEG 等（optional）

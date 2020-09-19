@@ -30,7 +30,7 @@ class EncoderResidualNetwork(nn.Module):
             DoubleConv(512, 1024),
             DoubleConv(1024, 1024),
             DoubleConv(1024, 1024),
-            DoubleConv(1024, 1024),
+            # DoubleConv(1024, 1024),
         )
         # Size:16->32
         self.Up4_convT = nn.ConvTranspose2d(1024, 512, 2, stride=2)
@@ -48,7 +48,13 @@ class EncoderResidualNetwork(nn.Module):
         self.Up0_conv = DoubleConv(64, 3)
         # 最后一个卷积层得到输出
         #self.final_conv_with = nn.Conv2d(64+3, 3, 1)
-        self.final_conv = DoubleConv(3, 3)
+        #self.final_conv = DoubleConv(3, 3)
+        self.final_conv = nn.Sequential(
+            DoubleConv(3, 3),
+            DoubleConv(3, 3),
+            DoubleConv(3, 3),
+            # DoubleConv(3, 3),
+        )
 
     def forward(self, p):
         # p1 = self.init(p)

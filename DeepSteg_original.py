@@ -53,8 +53,9 @@ if __name__ =='__main__':
         loss_all = loss_cover + B * loss_secret
         return loss_all, loss_cover, loss_secret
 
-    def localization_loss(pred_label, cropout_label, cropout_label_2, train_hidden, train_covers, train_recovered, beta=(1,1), use_vgg=False):
-        ''' 自定义localization_loss '''
+    def localization_loss(pred_label, cropout_label, cropout_label_2, train_hidden, train_covers, train_recovered, use_vgg=False):
+
+        hyper1, hyper2, hyper3 = config.beta[0],config.beta[1],config.beta[2]
         # numpy_watch_groundtruth = cropout_label.data.clone().detach().cpu().numpy()
         # numpy_watch_predicted = pred_label.data.clone().detach().cpu().numpy()
         if config.num_classes == 2:
@@ -80,8 +81,11 @@ if __name__ =='__main__':
                 #             std=config.std, mean=config.mean)
 
                 loss_recover = F.mse_loss((train_recovered*255).mul(cropout_label_2[1]), (train_covers*255).mul(cropout_label_2[1]))
+
+        if loss_localization < 0.15:
+            hyper1 = 0
         if cropout_label_2 is not None:
-            loss_all = beta[0] * loss_localization + beta[1] * loss_cover + beta[2] * loss_recover
+            loss_all = hyper1 * loss_localization + hyper2 * loss_cover + hyper3 * loss_recover
         else:
             loss_all = beta[0] * loss_localization + loss_cover
         return loss_all, loss_localization, loss_cover, loss_recover
@@ -92,7 +96,9 @@ if __name__ =='__main__':
         # batch:3 epoch:2 data:2*3*224*224
 
         # Save optimizer
-        optimizer = optim.Adam(net.parameters(), lr=learning_rate)
+        # optimizer = optim.Adam(net.parameters(), lr=learning_rate)
+        optimizer = optim.RMSprop(net.parameters(), lr=learning_rate, weight_decay=1e-8, momentum=0.9)
+        # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=2)
 
         loss_history = []
         # Iterate over batches performing forward and backward passes
@@ -130,7 +136,7 @@ if __name__ =='__main__':
 
                 # MSE标签距离 loss
                 train_loss_all, train_loss_localization, train_loss_cover, train_loss_recover = \
-                    localization_loss(pred_label, cropout_label, cropout_label_2, train_hidden, train_covers, train_recovered, beta=beta)
+                    localization_loss(pred_label, cropout_label, cropout_label_2, train_hidden, train_covers, train_recovered)
 
                 # Calculate loss and perform backprop
                 # train_loss, train_loss_cover, train_loss_secret = customized_loss(train_output, train_hidden, train_secrets,
@@ -192,7 +198,7 @@ if __name__ =='__main__':
                 net(test_secret, test_cover, is_test=False)
             # MSE标签距离 loss
             test_loss_all, test_loss_localization, test_loss_cover, test_loss_recover = \
-                localization_loss(pred_label, cropout_label, cropout_label_2, test_hidden, test_cover, test_recovered, beta=beta)
+                localization_loss(pred_label, cropout_label, cropout_label_2, test_hidden, test_cover, test_recovered)
 
             #     diff_S, diff_C = np.abs(np.array(test_output.data[0]) - np.array(test_secret.data[0])), np.abs(np.array(test_hidden.data[0]) - np.array(test_cover.data[0]))
 
