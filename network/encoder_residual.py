@@ -53,7 +53,7 @@ class EncoderResidualNetwork(nn.Module):
             DoubleConv(3, 3),
             DoubleConv(3, 3),
             DoubleConv(3, 3),
-            # DoubleConv(3, 3),
+            DoubleConv(3, 3),
         )
 
     def forward(self, p):

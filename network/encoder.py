@@ -44,10 +44,13 @@ class EncoderNetwork(nn.Module):
         self.Up2_conv = DoubleConv(256, 128)
         # Size:128->256
         self.Up1_convT = nn.ConvTranspose2d(128, 64, 2, stride=2)
-        self.Up1_conv = DoubleConv(128, 64)
+        self.Up1_conv = nn.Sequential(
+            DoubleConv(128, 64),
+            DoubleConv(64, 3),
+        )
         # 最后一个卷积层得到输出
         #self.final_conv_with = nn.Conv2d(64+3, 3, 1)
-        self.final_conv = nn.Conv2d(64 + 3, 3, 1)
+        self.final_conv = nn.Conv2d(6, 3, 1)
 
     def forward(self, p):
         # p1 = self.init(p)

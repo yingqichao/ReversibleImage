@@ -58,7 +58,7 @@ class Encoder_Localizer(nn.Module):
         super(Encoder_Localizer, self).__init__()
         self.config = config
         self.add_other_noise = add_other_noise
-        self.encoder = EncoderResidualNetwork(is_embed_message=False, config=config).to(device)
+        self.encoder = EncoderNetwork(is_embed_message=False, config=config).to(device)
         self.encoder2 = EncoderResidualNetwork(is_embed_message=False, config=config).to(device)
         self.train_first_network = train_first_network
         self.train_second_network = train_second_network

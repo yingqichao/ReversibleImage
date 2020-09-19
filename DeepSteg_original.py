@@ -148,7 +148,7 @@ if __name__ =='__main__':
                 train_losses.append(train_loss_all.data.cpu().numpy())
                 loss_history.append(train_loss_all.data.cpu().numpy())
 
-                if idx % 16==15:
+                if idx % 8==7:
                 # Prints mini-batch losses
                     print('Net 1 Epoch {0}/{1} Training: Batch {2}/{3}. Total Loss {4:.4f}, Localization Loss {5:.4f}, Cover Loss {6:.4f}, Recover Loss {7:.4f} '
                         .format(epoch, num_epochs, idx + 1, len(train_loader), train_loss_all.data, train_loss_localization.data, train_loss_cover.data,train_loss_recover.data))
