@@ -13,23 +13,23 @@ class EncoderNetwork(nn.Module):
         self.is_embed_message = is_embed_message
         # self.init = DoubleConv(3, 32)
         # Size: 256->128
-        self.Down1_conv = DoubleConv(3,64)
+        self.Down1_conv = DoubleConv(3, 64)
         self.Down1_pool = nn.MaxPool2d(2)
 
         # Size: 128->64
-        self.Down2_conv = DoubleConv(64,128)
+        self.Down2_conv = DoubleConv(64, 128)
         self.Down2_pool = nn.MaxPool2d(2)
 
         # Size: 64->32
-        self.Down3_conv = DoubleConv(128,256)
+        self.Down3_conv = DoubleConv(128, 256)
         self.Down3_pool = nn.MaxPool2d(2)
 
         # Size: 32->16
-        self.Down4_conv = DoubleConv(256,512)
+        self.Down4_conv = DoubleConv(256, 512)
         self.Down4_pool = nn.MaxPool2d(2)
 
         # 随机嵌入信息卷积到图中
-        self.after_concat_layer = ConvBNRelu(1024+self.config.water_features, 1024)
+        self.after_concat_layer = ConvBNRelu(1024 + self.config.water_features, 1024)
         self.Conv5 = nn.Sequential(
             DoubleConv(512, 1024),
             DoubleConv(1024, 1024),
@@ -53,7 +53,7 @@ class EncoderNetwork(nn.Module):
             DoubleConv(64, 3),
         )
         # 最后一个卷积层得到输出
-        #self.final_conv_with = nn.Conv2d(64+3, 3, 1)
+        # self.final_conv_with = nn.Conv2d(64+3, 3, 1)
         self.final_conv = nn.Conv2d(6, 3, 1)
 
     def forward(self, p):

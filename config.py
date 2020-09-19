@@ -8,18 +8,17 @@ class Encoder_Localizer_config():
         self.block_size = block_size
         self.decoder_channels = 128
         self.min_required_block = 64
-        self.min_required_block_portion = 0.3
+        self.min_required_block_portion = 0.25
         self.crop_size = (0.2, 0.2)
         self.encoder_features = 64
-        self.water_features = 512
-        self.required_attack_ratio = 0.5
+        self.water_features = 256
         self.device = torch.device("cuda")
         self.num_classes = 2
         self.use_dataset = 'COCO'
         # localization cover recover
-        self.beta = (5000,1,1)
-        self.num_epochs = 50
-        self.train_batch_size = 4
+        self.beta = (10000,1,1)
+        self.num_epochs = 20
+        self.train_batch_size = 2
         self.test_batch_size = 1
         self.learning_rate = 0.0001
         self.use_Vgg = False

@@ -11,6 +11,8 @@ import util
 from network.localizer import LocalizeNetwork
 from network.encoder import EncoderNetwork
 from network.encoder_residual import EncoderResidualNetwork
+from network.encoder_noPool import EncoderNetwork_noPool
+from network.encode_noPool_recovery import EncoderNetwork_noPoolRecovery
 from torchvision import datasets, utils
 
 device = torch.device("cuda")
@@ -22,35 +24,6 @@ def gaussian(tensor, mean=0, stddev=0.1):
 
     return tensor + noise
 
-# class DecoderNetwork(nn.Module):
-#     def __init__(self, config=Encoder_Localizer_config()):
-#         super(DecoderNetwork, self).__init__()
-#         self.config = config
-#         # self.upsample = nn.Sequential(
-#         #     # Size:16->32
-#         #     Up(self.config.encoder_features,self.config.encoder_features),
-#         #     # Size:32->64
-#         #     Up(self.config.encoder_features, self.config.encoder_features),
-#         #     # Size:64->128
-#         #     Up(self.config.encoder_features, self.config.encoder_features),
-#         #     # Size:128->256
-#         #     Up(self.config.encoder_features, self.config.encoder_features)
-#         # )
-#
-#         self.conv_kernel_size_1 = nn.Sequential(
-#             nn.Conv2d(self.config.encoder_features, 3, kernel_size=3, padding=1),
-#             # nn.Conv2d(self.config.encoder_features, 3, kernel_size=1, padding=0))
-#         )
-#
-#     def forward(self, h):
-#         h1 = self.upsample(h)
-#
-#         out = self.conv_kernel_size_1(h1)
-#         out_noise = gaussian(out.data, 0, 0.1)
-#         return out, out_noise
-
-
-
 # Join three networks in one module
 class Encoder_Localizer(nn.Module):
     def __init__(self, config=Encoder_Localizer_config(),add_other_noise=False,
@@ -58,8 +31,8 @@ class Encoder_Localizer(nn.Module):
         super(Encoder_Localizer, self).__init__()
         self.config = config
         self.add_other_noise = add_other_noise
-        self.encoder = EncoderNetwork(is_embed_message=False, config=config).to(device)
-        self.encoder2 = EncoderResidualNetwork(is_embed_message=False, config=config).to(device)
+        self.encoder = EncoderNetwork_noPool(is_embed_message=False, config=config).to(device)
+        self.encoder2 = EncoderNetwork_noPoolRecovery(is_embed_message=False, config=config).to(device)
         self.train_first_network = train_first_network
         self.train_second_network = train_second_network
         # self.decoder = DecoderNetwork(config).to(device)

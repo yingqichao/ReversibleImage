@@ -80,10 +80,12 @@ if __name__ =='__main__':
                 # util.imshow(imgs,'(After Net 1) Fig.1 After EncodeAndAttacked Fig.2 Original',
                 #             std=config.std, mean=config.mean)
 
-                loss_recover = F.mse_loss((train_recovered*255).mul(cropout_label_2[1]), (train_covers*255).mul(cropout_label_2[1]))
+                loss_recover = F.mse_loss((train_recovered*255).mul(cropout_label_2), (train_covers*255).mul(cropout_label_2))
 
         if loss_localization < 0.15:
             hyper1 = 0
+        if loss_recover > 10000:
+            hyper3 *= 2
         if cropout_label_2 is not None:
             loss_all = hyper1 * loss_localization + hyper2 * loss_cover + hyper3 * loss_recover
         else:
@@ -113,16 +115,7 @@ if __name__ =='__main__':
                 for idx, train_batch in enumerate(train_loader):
                     data, _ = train_batch
 
-                    # Saves secret images and secret covers
-                    if not isSelfRecovery:
-                        train_covers = data[:len(data) // 2]
-                        train_secrets = data[len(data) // 2:]
-                    else:
-                        # self recovery
-                        train_covers = data[:]
-                        train_secrets = data[:]
-                        # train_covers = data[:]
-                        # train_secrets = data[:]
+                    train_covers = data[:]
 
                     # Creates variable from secret and cover images
                     # train_cover作为tamper的图像
@@ -132,7 +125,8 @@ if __name__ =='__main__':
 
                     # Forward + Backward + Optimize
                     optimizer.zero_grad()
-                    train_hidden, train_recovered, pred_label, cropout_label, cropout_label_2, _ = net(train_covers, train_covers)
+                    train_hidden, train_recovered, pred_label, cropout_label, cropout_label_2, _ = \
+                        net(train_covers, train_covers)
 
                     # MSE标签距离 loss
                     train_loss_all, train_loss_localization, train_loss_cover, train_loss_recover = \
@@ -148,7 +142,7 @@ if __name__ =='__main__':
                     train_losses.append(train_loss_all.data.cpu().numpy())
                     loss_history.append(train_loss_all.data.cpu().numpy())
 
-                    if idx % 8==7:
+                    if idx % 4 == 3:
                         str = 'Net 1 Epoch {0}/{1} Training: Batch {2}/{3}. Total Loss {4:.4f}, Localization Loss {5:.4f}, Cover Loss {6:.4f}, Recover Loss {7:.4f} '\
                             .format(epoch, num_epochs, idx + 1, len(train_loader), train_loss_all.data, train_loss_localization.data, train_loss_cover.data,train_loss_recover.data)
                         f.write(str+'\n')
@@ -157,11 +151,12 @@ if __name__ =='__main__':
                 torch.save(net.state_dict(), MODELS_PATH + 'Epoch N{}.pkl'.format(epoch + 1))
                 # 保存图片
                 for i in range(train_recovered.shape[0]):
-                    util.save_images(train_recovered[i].cpu(), 'epoch-recovery-{0}-{1}.png'.format(epoch,i), './Images', std=config.std,
+
+                    util.save_images((train_recovered[i]).mul(cropout_label_2).cpu(), 'epoch-recovery-{0}-{1}.png'.format(epoch,i), './Images', std=config.std,
                                      mean=config.mean)
                     util.save_images(train_hidden[i].cpu(), 'epoch-hidden-{0}-{1}.png'.format(epoch,i), './Images', std=config.std,
                                      mean=config.mean)
-                    util.save_images(train_covers[i].cpu(), 'epoch-covers-{0}-{1}png'.format(epoch,i), './Images', std=config.std,
+                    util.save_images(train_covers[i].cpu(), 'epoch-covers-{0}-{1}.png'.format(epoch,i), './Images', std=config.std,
                                      mean=config.mean)
 
 
@@ -188,24 +183,15 @@ if __name__ =='__main__':
             # Saves images
             data, _ = test_batch
 
-            # Saves secret images and secret covers
-            if not isSelfRecovery:
-                test_secret = data[:len(data) // 2]
-                test_cover = data[len(data) // 2:]
-            else:
-                # Self Recovery
-                test_secret = data[:]
-                test_cover = data[:]
-                # test_secret = data[:]
-                # test_cover = data[:]
+            test_cover = data[:]
 
             # Creates variable from secret and cover images
             test_cover = test_cover.to(device)
-            test_secret = torch.tensor(test_secret, requires_grad=False).to(device)
+            #test_secret = torch.tensor(test_secret, requires_grad=False).to(device)
             test_cover = torch.tensor(test_cover, requires_grad=False).to(device)
 
             test_hidden, test_recovered, pred_label, cropout_label, cropout_label_2, selected_attack = \
-                net(test_secret, test_cover, is_test=False)
+                net(test_cover, test_cover, is_test=False)
             # MSE标签距离 loss
             test_loss_all, test_loss_localization, test_loss_cover, test_loss_recover = \
                 localization_loss(pred_label, cropout_label, cropout_label_2, test_hidden, test_cover, test_recovered)
@@ -214,12 +200,14 @@ if __name__ =='__main__':
 
             #     print (diff_S, diff_C)
 
+            test_output = test_cover*(1-cropout_label_2)+test_recovered*cropout_label_2
+
             if idx < 10:
                 print('Test: Batch {0}/{1}. Total Loss {2:.4f}, Localization Loss {3:.4f}, Cover Loss {4:.4f}, Recover Loss {5:.4f} '
                     .format(idx + 1, len(train_loader), test_loss_all.data, test_loss_localization.data, test_loss_cover.data,test_loss_recover.data))
                 print('Selected: ' + selected_attack)
                 # Creates img tensor
-                imgs = [test_secret.data, test_hidden.data, test_recovered.data]
+                imgs = [test_cover.data, test_hidden.data, test_output.data]
 
                 # prints the whole tensor
                 torch.set_printoptions(profile="full")
@@ -279,6 +267,6 @@ if __name__ =='__main__':
         plt.xlabel('Batch')
         plt.show()
     else:
-        net.load_state_dict(torch.load(MODELS_PATH+'Epoch N50.pkl'))
+        net.load_state_dict(torch.load(MODELS_PATH+'Epoch N6.pkl'))
 
     test_model(net, test_loader, beta, learning_rate, isSelfRecovery=True)
