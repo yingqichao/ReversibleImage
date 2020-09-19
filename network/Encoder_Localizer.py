@@ -10,6 +10,7 @@ import numpy as np
 import util
 from network.localizer import LocalizeNetwork
 from network.encoder import EncoderNetwork
+from network.encoder_residual import EncoderResidualNetwork
 from torchvision import datasets, utils
 
 device = torch.device("cuda")
@@ -57,8 +58,8 @@ class Encoder_Localizer(nn.Module):
         super(Encoder_Localizer, self).__init__()
         self.config = config
         self.add_other_noise = add_other_noise
-        self.encoder = EncoderNetwork(is_embed_message=True, config=config).to(device)
-        self.encoder2 = EncoderNetwork(is_embed_message=False, config=config).to(device)
+        self.encoder = EncoderResidualNetwork(is_embed_message=False, config=config).to(device)
+        self.encoder2 = EncoderResidualNetwork(is_embed_message=False, config=config).to(device)
         self.train_first_network = train_first_network
         self.train_second_network = train_second_network
         # self.decoder = DecoderNetwork(config).to(device)

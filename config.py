@@ -1,9 +1,6 @@
 import torch
 
 class Encoder_Localizer_config():
-    """
-    The HiDDeN network configuration.
-    """
 
     def __init__(self, Height: int=256, Width: int=256, block_size: int=16):
         self.Height = Height
@@ -19,7 +16,8 @@ class Encoder_Localizer_config():
         self.device = torch.device("cuda")
         self.num_classes = 2
         self.use_dataset = 'COCO'
-        self.beta = (10000,1)
+        # localization cover recover
+        self.beta = (5000,1,1)
         self.num_epochs = 10
         self.train_batch_size = 2
         self.test_batch_size = 2

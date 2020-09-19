@@ -6,9 +6,9 @@ from network.conv_bn_relu import ConvBNRelu
 from network.double_conv import DoubleConv
 
 
-class EncoderNetwork(nn.Module):
-    def __init__(self, is_embed_message=True, config=Encoder_Localizer_config()):
-        super(EncoderNetwork, self).__init__()
+class EncoderResidualNetwork(nn.Module):
+    def __init__(self, is_embed_message=False, config=Encoder_Localizer_config()):
+        super(EncoderResidualNetwork, self).__init__()
         self.config = config
         self.is_embed_message = is_embed_message
         # self.init = DoubleConv(3, 32)
@@ -34,20 +34,21 @@ class EncoderNetwork(nn.Module):
         )
         # Size:16->32
         self.Up4_convT = nn.ConvTranspose2d(1024, 512, 2, stride=2)
-        self.Up4_conv = DoubleConv(1024, 512)
+        self.Up4_conv = DoubleConv(512, 512)
 
         # Size:32->64
         self.Up3_convT = nn.ConvTranspose2d(512, 256, 2, stride=2)
-        self.Up3_conv = DoubleConv(512, 256)
+        self.Up3_conv = DoubleConv(256, 256)
         # Size:64->128
         self.Up2_convT = nn.ConvTranspose2d(256, 128, 2, stride=2)
-        self.Up2_conv = DoubleConv(256, 128)
+        self.Up2_conv = DoubleConv(128, 128)
         # Size:128->256
         self.Up1_convT = nn.ConvTranspose2d(128, 64, 2, stride=2)
-        self.Up1_conv = DoubleConv(128, 64)
+        self.Up1_conv = DoubleConv(64, 64)
+        self.Up0_conv = DoubleConv(64, 3)
         # 最后一个卷积层得到输出
         #self.final_conv_with = nn.Conv2d(64+3, 3, 1)
-        self.final_conv = nn.Conv2d(64 + 3, 3, 1)
+        self.final_conv = DoubleConv(3, 3)
 
     def forward(self, p):
         # p1 = self.init(p)
@@ -76,20 +77,26 @@ class EncoderNetwork(nn.Module):
         # 开始反卷积，并叠加原始层
         # Size: 16->32
         up4_convT = self.Up4_convT(embedded)
-        merge4 = torch.cat([up4_convT, down4_c], dim=1)
+        #merge4 = torch.cat([up4_convT, down4_c], dim=1)
+        merge4 = up4_convT + down4_c
         up4_conv = self.Up4_conv(merge4)
         # Size: 32->64
         up3_convT = self.Up3_convT(up4_conv)
-        merge3 = torch.cat([up3_convT, down3_c], dim=1)
+        #merge3 = torch.cat([up3_convT, down3_c], dim=1)
+        merge3 = up3_convT + down3_c
         up3_conv = self.Up3_conv(merge3)
         # Size: 64->128
         up2_convT = self.Up2_convT(up3_conv)
-        merge2 = torch.cat([up2_convT, down2_c], dim=1)
+        #merge2 = torch.cat([up2_convT, down2_c], dim=1)
+        merge2 = up2_convT + down2_c
         up2_conv = self.Up2_conv(merge2)
         # Size: 128->256
         up1_convT = self.Up1_convT(up2_conv)
-        merge1 = torch.cat([up1_convT, down1_c], dim=1)
+        #merge1 = torch.cat([up1_convT, down1_c], dim=1)
+        merge1 = up1_convT + down1_c
         up1_conv = self.Up1_conv(merge1)
-        merge0 = torch.cat([up1_conv, p], dim=1)
+        up0_conv = self.Up0_conv(up1_conv)
+        #merge0 = torch.cat([up1_conv, p], dim=1)
+        merge0 = up0_conv + p
         out = self.final_conv(merge0)
         return out

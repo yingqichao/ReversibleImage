@@ -81,7 +81,7 @@ if __name__ =='__main__':
 
                 loss_recover = F.mse_loss((train_recovered*255).mul(cropout_label_2[1]), (train_covers*255).mul(cropout_label_2[1]))
         if cropout_label_2 is not None:
-            loss_all = beta[0] * loss_localization + loss_cover + beta[1] * loss_recover
+            loss_all = beta[0] * loss_localization + beta[1] * loss_cover + beta[2] * loss_recover
         else:
             loss_all = beta[0] * loss_localization + loss_cover
         return loss_all, loss_localization, loss_cover, loss_recover
@@ -142,9 +142,10 @@ if __name__ =='__main__':
                 train_losses.append(train_loss_all.data.cpu().numpy())
                 loss_history.append(train_loss_all.data.cpu().numpy())
 
+                if idx % 16==15:
                 # Prints mini-batch losses
-                print('Net 1 Training: Batch {0}/{1}. Total Loss {2:.4f}, Localization Loss {3:.4f}, Cover Loss {4:.4f}, Recover Loss {5:.4f} '
-                    .format(idx + 1, len(train_loader), train_loss_all.data, train_loss_localization.data, train_loss_cover.data,train_loss_recover.data))
+                    print('Net 1 Epoch {0}/{1} Training: Batch {2}/{3}. Total Loss {4:.4f}, Localization Loss {5:.4f}, Cover Loss {6:.4f}, Recover Loss {7:.4f} '
+                        .format(epoch, num_epochs, idx + 1, len(train_loader), train_loss_all.data, train_loss_localization.data, train_loss_cover.data,train_loss_recover.data))
 
             torch.save(net.state_dict(), MODELS_PATH + 'Epoch N{}.pkl'.format(epoch + 1))
 
