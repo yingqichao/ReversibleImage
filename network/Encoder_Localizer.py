@@ -63,8 +63,8 @@ class Encoder_Localizer(nn.Module):
         self.train_first_network = train_first_network
         self.train_second_network = train_second_network
         # self.decoder = DecoderNetwork(config).to(device)
-        self.cropout_noise_layer = Cropout(self.config.crop_size,config).to(device)
-        self.just_crop_layer = Cropout(self.config.crop_size, config).to(device)
+        self.cropout_noise_layer = Cropout(config).to(device)
+        self.just_crop_layer = Cropout(config).to(device)
         self.jpeg_layer = JpegCompression(device)
         self.other_noise_layers = [Identity()]
         self.other_noise_layers.append(JpegCompression(device))

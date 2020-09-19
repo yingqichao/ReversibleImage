@@ -11,10 +11,10 @@ class Cropout(nn.Module):
     Combines the noised and cover images into a single image, as follows: Takes a crop of the noised image, and takes the rest from
     the cover image. The resulting image has the same size as the original and the noised images.
     """
-    def __init__(self, shape, config=Encoder_Localizer_config(), device=torch.device("cuda")):
+    def __init__(self, config=Encoder_Localizer_config(), device=torch.device("cuda")):
         super(Cropout, self).__init__()
         self.config = config
-        self.height_ratio_range, self.width_ratio_range = shape[0], shape[1]
+        self.height_ratio_range, self.width_ratio_range = config.crop_size[0], config.crop_size[1]
         self.device = device
 
     def forward(self, embedded_image,cover_image=None):
@@ -33,8 +33,8 @@ class Cropout(nn.Module):
         # 不断修改小块，直到修改面积至少为全图的50%
         while sum_attacked<self.config.min_required_block_portion:
             h_start, h_end, w_start, w_end, ratio = get_random_rectangle_inside(image=embedded_image,
-                                                                         height_ratio_range=(8/256,self.height_ratio_range),
-                                                                         width_ratio_range=(8/256,self.width_ratio_range))
+                                                                         height_ratio_range=(16/256,self.height_ratio_range),
+                                                                         width_ratio_range=(16/256,self.width_ratio_range))
             sum_attacked += ratio
             # 被修改的区域内赋值1, dims: batch channel height width
             cropout_mask[:, :, h_start:h_end, w_start:w_end] = 1

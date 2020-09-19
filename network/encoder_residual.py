@@ -30,7 +30,7 @@ class EncoderResidualNetwork(nn.Module):
             DoubleConv(512, 1024),
             DoubleConv(1024, 1024),
             DoubleConv(1024, 1024),
-            # DoubleConv(1024, 1024),
+            DoubleConv(1024, 1024),
         )
         # Size:16->32
         self.Up4_convT = nn.ConvTranspose2d(1024, 512, 2, stride=2)
