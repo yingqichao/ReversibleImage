@@ -1,15 +1,13 @@
-import numpy as np
-import torch
 import torch.nn as nn
 
 from config import GlobalConfig
-from network.encode_noPool_recovery import EncoderNetwork_noPoolRecovery
-from network.encoder_noPool import EncoderNetwork_noPool
-from network.localizer import LocalizeNetwork
+from encoder.encode_noPool_recovery import EncoderNetwork_noPoolRecovery
+from encoder.encoder_noPool import EncoderNetwork_noPool
 from noise_layers.cropout import Cropout
 from noise_layers.identity import Identity
 from noise_layers.jpeg_compression import JpegCompression
 from noise_layers.quantization import Quantization
+from encoder.encoder_noPool_shuffle import EncoderNetwork_noPool_shuffle
 
 
 class EncoderDecoder(nn.Module):

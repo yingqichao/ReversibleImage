@@ -60,7 +60,8 @@ if __name__ =='__main__':
                         f.write(str + '\n')
                         print(str)
 
-                torch.save(net.state_dict(), MODELS_PATH + 'Epoch N{}.pkl'.format(epoch + 1))
+
+                #torch.save(net.state_dict(), MODELS_PATH + 'Epoch N{}.pkl'.format(epoch + 1))
                 # 保存图片
                 for i in range(x_recover.shape[0]):
                     util.save_images(x_recover[i].cpu(),
@@ -74,7 +75,7 @@ if __name__ =='__main__':
                                      mean=config.mean)
 
                 mean_train_loss = np.mean(train_losses)
-
+                net.save_state_dict(MODELS_PATH + 'Epoch N{}'.format(epoch + 1))
                 # Prints epoch average loss
                 print('Epoch [{0}/{1}], Average_loss: {2:.4f}'.format(
                     epoch + 1, num_epochs, mean_train_loss))

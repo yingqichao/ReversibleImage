@@ -1,16 +1,8 @@
 import torch
 import torch.nn as nn
 from  config import GlobalConfig
-from noise_layers.cropout import Cropout
-from noise_layers.jpeg_compression import JpegCompression
-from noise_layers.quantization import Quantization
-from noise_layers.identity import Identity
-import numpy as np
-from network.conv_bn_relu import ConvBNRelu
-from network.down_sample import Down
-from network.up_sample import Up
 from network.double_conv import DoubleConv
-from network.encoder import EncoderNetwork
+
 
 class LocalizeNetwork(nn.Module):
     def __init__(self, config=GlobalConfig()):

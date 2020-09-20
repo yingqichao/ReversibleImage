@@ -1,11 +1,8 @@
 # %matplotlib inline
-import numpy as np
 import torch
 import torch.nn as nn
-from network.encoder_decoder import EncoderDecoder
+from encoder.encoder_decoder import EncoderDecoder
 from config import GlobalConfig
-from network.encode_noPool_recovery import EncoderNetwork_noPoolRecovery
-from network.encoder_noPool import EncoderNetwork_noPool
 from network.localizer import LocalizeNetwork
 from noise_layers.cropout import Cropout
 from noise_layers.identity import Identity
@@ -84,6 +81,9 @@ class ReversibleImageNetwork:
         }
         return losses, (x_hidden, x_recover.mul(mask)+Cover.mul(1-mask), pred_label, cropout_label)
 
+    def save_state_dict(self, path_enc_dec, path_local):
+        torch.save(self.encoder_decoder.state_dict(), path_enc_dec + '.pkl')
+        torch.save(self.localizer.state_dict(), path_local + '.pkl')
 
     # def forward(self, Cover, Another, skipLocalizationNetwork, skipRecoveryNetwork, is_test=False):
     #     # 得到Encode后的特征平面
