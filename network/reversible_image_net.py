@@ -81,9 +81,9 @@ class ReversibleImageNetwork:
         }
         return losses, (x_hidden, x_recover.mul(mask)+Cover.mul(1-mask), pred_label, cropout_label)
 
-    def save_state_dict(self, path_enc_dec, path_local):
-        torch.save(self.encoder_decoder.state_dict(), path_enc_dec + '.pkl')
-        torch.save(self.localizer.state_dict(), path_local + '.pkl')
+    def save_state_dict(self, path,):
+        torch.save(self.encoder_decoder.state_dict(), path + '_encoder_decoder.pkl')
+        torch.save(self.localizer.state_dict(), path + '_localizer.pkl')
 
     # def forward(self, Cover, Another, skipLocalizationNetwork, skipRecoveryNetwork, is_test=False):
     #     # 得到Encode后的特征平面

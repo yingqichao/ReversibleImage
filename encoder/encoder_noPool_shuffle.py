@@ -4,7 +4,7 @@ import torch.nn as nn
 from config import GlobalConfig
 from network.conv_bn_relu import ConvBNRelu
 from network.double_conv import DoubleConv
-
+import util
 
 class EncoderNetwork_noPool_shuffle(nn.Module):
     def __init__(self,config=GlobalConfig()):
@@ -66,15 +66,15 @@ class EncoderNetwork_noPool_shuffle(nn.Module):
         # )
         # Level 5
         self.hiding_1_1 = nn.Sequential(
-            DoubleConv(120+256, 40),
+            DoubleConv(120+768, 40),
             DoubleConv(40, 40),
         )
         self.hiding_1_2 = nn.Sequential(
-            DoubleConv(120+256, 40),
+            DoubleConv(120+768, 40),
             DoubleConv(40, 40),
         )
         self.hiding_1_3 = nn.Sequential(
-            DoubleConv(120+256, 40),
+            DoubleConv(120+768, 40),
             DoubleConv(40, 40),
         )
         self.hiding_2_1 = nn.Sequential(
@@ -161,12 +161,17 @@ class EncoderNetwork_noPool_shuffle(nn.Module):
         l3_2 = self.Level3_2(l2)
         l3_3 = self.Level3_3(l2)
         l3 = torch.cat([l3_1, l3_2, l3_3], dim=1)
+
         # shuffled data
         for i in range(16):
             for j in range(16):
                 portion = p[:, :, 16*i:16*(i+1), 16*j:16*(j+1)]
-                portion = portion.repeat(16, 16)
+                portion = portion.repeat(1, 1, 16, 16)
                 l3 = torch.cat([l3, portion], dim=1)
+                # Test
+                # imgs = [portion.data, p.data]
+                # util.imshow(imgs, '(After Net 1) Fig.1 After EncodeAndAttacked Fig.2 Original', std=self.config.std,
+                #             mean=self.config.mean)
         # # Level 4
         # l4_1 = self.Level4_1(l3)
         # l4_2 = self.Level4_2(l3)
