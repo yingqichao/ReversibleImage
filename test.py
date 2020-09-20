@@ -8,8 +8,8 @@ import torch.optim as optim
 import torchvision.transforms as transforms
 from torch import utils
 from torchvision import datasets, utils
-from network.Encoder_Localizer import Encoder_Localizer
-from config import Encoder_Localizer_config
+from network.reversible_image_net import ReversibleImageNetwork
+from config import GlobalConfig
 import torch.nn as nn
 import torch.nn.functional as F
 from noise_layers.jpeg_compression import JpegCompression
@@ -166,11 +166,11 @@ if __name__ =='__main__':
 
 
     # Setting
-    config = Encoder_Localizer_config()
+    config = GlobalConfig()
     isSelfRecovery = True
     skipTraining = True
     # Creates net object
-    net = Encoder_Localizer(config).to(device)
+    net = ReversibleImageNetwork(config).to(device)
 
     # Creates training set
     train_loader = torch.utils.data.DataLoader(

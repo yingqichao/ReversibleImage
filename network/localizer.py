@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from  config import Encoder_Localizer_config
+from  config import GlobalConfig
 from noise_layers.cropout import Cropout
 from noise_layers.jpeg_compression import JpegCompression
 from noise_layers.quantization import Quantization
@@ -13,7 +13,7 @@ from network.double_conv import DoubleConv
 from network.encoder import EncoderNetwork
 
 class LocalizeNetwork(nn.Module):
-    def __init__(self, config=Encoder_Localizer_config()):
+    def __init__(self, config=GlobalConfig()):
         super(LocalizeNetwork, self).__init__()
         self.config = config
         # channels = int(self.config.Width*self.config.Height/self.config.block_size/self.config.block_size)

@@ -1,16 +1,15 @@
 import torch
 import torch.nn as nn
 
-from config import Encoder_Localizer_config
+from config import GlobalConfig
 from network.conv_bn_relu import ConvBNRelu
 from network.double_conv import DoubleConv
 
 
 class EncoderNetwork_noPool(nn.Module):
-    def __init__(self, is_embed_message=True, config=Encoder_Localizer_config()):
+    def __init__(self,config=GlobalConfig()):
         super(EncoderNetwork_noPool, self).__init__()
         self.config = config
-        self.is_embed_message = is_embed_message
         # self.init = DoubleConv(3, 40)
         # Level 1
         self.Level1_1 = nn.Sequential(

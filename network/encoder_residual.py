@@ -1,13 +1,13 @@
 import torch
 import torch.nn as nn
 
-from config import Encoder_Localizer_config
+from config import GlobalConfig
 from network.conv_bn_relu import ConvBNRelu
 from network.double_conv import DoubleConv
 
 
 class EncoderResidualNetwork(nn.Module):
-    def __init__(self, is_embed_message=False, config=Encoder_Localizer_config()):
+    def __init__(self, is_embed_message=False, config=GlobalConfig()):
         super(EncoderResidualNetwork, self).__init__()
         self.config = config
         self.is_embed_message = is_embed_message
