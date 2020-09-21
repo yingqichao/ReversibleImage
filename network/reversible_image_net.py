@@ -62,13 +62,13 @@ class ReversibleImageNetwork:
             x_1_gaussian = self.gaussian(x_1_crop)
             x_1_attack = self.jpeg_layer(x_1_gaussian)
             pred_label = self.localizer(x_1_attack.detach())
-            loss_localization = F.binary_cross_entropy(pred_label, cropout_label)
+            loss_localization = self.bce_with_logits_loss(pred_label, cropout_label)
             loss_localization.backward()
             self.optimizer_localizer.step()
             # --------------Train the generator (encoder-decoder) ---------------------
             self.optimizer_encoder_decoder.zero_grad()
             pred_again_label = self.localizer(x_1_attack)
-            loss_localization_again = F.binary_cross_entropy(pred_again_label, cropout_label)
+            loss_localization_again = self.bce_with_logits_loss(pred_again_label, cropout_label)
             loss_cover = F.mse_loss(x_hidden, Cover)
             loss_recover = F.mse_loss(x_recover.mul(mask), Cover.mul(mask))/self.config.min_required_block_portion
             loss_enc_dec = loss_localization_again*self.hyper[0]+loss_cover*self.hyper[1]+loss_recover*self.hyper[2]
@@ -94,7 +94,7 @@ class ReversibleImageNetwork:
             x_1_gaussian = self.gaussian(x_1_crop)
             x_1_attack = self.jpeg_layer(x_1_gaussian)
             pred_label = self.localizer(x_1_attack.detach())
-            loss_localization = F.binary_cross_entropy(pred_label, cropout_label)
+            loss_localization = self.bce_with_logits_loss(pred_label, cropout_label)
 
             loss_cover = F.mse_loss(x_hidden, Cover)
             loss_recover = F.mse_loss(x_recover.mul(mask), Cover.mul(mask)) / self.config.min_required_block_portion

@@ -91,17 +91,19 @@ class LocalizeNetwork(nn.Module):
         self.Down4_pool = nn.MaxPool2d(2)
 
         if self.config.num_classes == 2:
-            self.last_conv = nn.Sequential(
-                nn.Conv2d(120,2,kernel_size=1,stride=1),
-                nn.BatchNorm2d(2),
-                nn.Sigmoid()
-            )
+            # self.last_conv = nn.Sequential(
+            #     nn.Conv2d(120,2,kernel_size=1,stride=1),
+            #     nn.BatchNorm2d(2),
+            #     nn.Sigmoid()
+            # )
+            self.last_conv = nn.Conv2d(120,2,kernel_size=1,stride=1)
         else:
-            self.last_conv = nn.Sequential(
-                nn.Conv2d(120, 1, kernel_size=1, stride=1),
-                nn.BatchNorm2d(1),
-                nn.Sigmoid()
-            )
+            # self.last_conv = nn.Sequential(
+            #     nn.Conv2d(120, 1, kernel_size=1, stride=1),
+            #     nn.BatchNorm2d(1),
+            #     nn.Sigmoid()
+            # )
+            self.last_conv = nn.Conv2d(120, 1, kernel_size=1, stride=1)
 
 
     def forward(self, r):
