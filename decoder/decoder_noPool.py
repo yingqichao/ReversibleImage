@@ -6,9 +6,9 @@ from network.conv_bn_relu import ConvBNRelu
 from network.double_conv import DoubleConv
 
 
-class EncoderNetwork_noPoolRecovery(nn.Module):
+class Decoder_noPool(nn.Module):
     def __init__(self, config=GlobalConfig()):
-        super(EncoderNetwork_noPoolRecovery, self).__init__()
+        super(Decoder_noPool, self).__init__()
         self.config = config
 
 

@@ -9,7 +9,9 @@ from noise_layers.identity import Identity
 from noise_layers.jpeg_compression import JpegCompression
 from noise_layers.quantization import Quantization
 from noise_layers.gaussian import Gaussian
-import torch.nn.functional as F
+from encoder.encoder_pool_shuffle import EncoderNetwork_pool_shuffle
+from network.discriminator import Discriminator
+from loss.vgg_loss import VGGLoss
 
 # def gaussian(tensor, mean=0, stddev=0.1):
 #     '''Adds random noise to a tensor.'''
@@ -24,18 +26,30 @@ class ReversibleImageNetwork:
     def __init__(self, config=GlobalConfig(), add_other_noise=False):
         super(ReversibleImageNetwork, self).__init__()
         self.config = config
-        self.hyper = self.config.beta
         self.device = self.config.device
         self.add_other_noise = add_other_noise
         # Generator and Recovery Network
         self.encoder_decoder = EncoderDecoder(config=config).to(self.device)
-
         # Localize Network
         self.localizer = LocalizeNetwork(config).to(self.device)
+        # Discriminator
+        self.discriminator = Discriminator(config).to(self.device)
+        self.cover_label = 1
+        self.encoded_label = 0
+        # Vgg
+        if config.useVgg:
+            self.vgg_loss = VGGLoss(3, 1, False)
+            self.vgg_loss.to(self.device)
+        else:
+            self.vgg_loss = None
+        # Loss
+        self.bce_with_logits_loss = nn.BCEWithLogitsLoss().to(self.device)
+        self.mse_loss = nn.MSELoss().to(self.device)
 
         # Optimizer
         self.optimizer_encoder_decoder = torch.optim.Adam(self.encoder_decoder.parameters())
         self.optimizer_localizer = torch.optim.Adam(self.localizer.parameters())
+        self.optimizer_discrim = torch.optim.Adam(self.discriminator.parameters())
 
         # Attack Layers
         self.cropout_layer = Cropout(config).to(self.device)
@@ -44,8 +58,8 @@ class ReversibleImageNetwork:
         self.other_noise_layers.append(JpegCompression(self.device).to(self.device))
         self.other_noise_layers.append(Quantization(self.device).to(self.device))
         self.gaussian = Gaussian(config).to(self.device)
-        # Loss
-        self.bce_with_logits_loss = nn.BCEWithLogitsLoss().to(self.device)
+
+
 
 
     def train_on_batch(self, Cover, Another):
@@ -54,9 +68,23 @@ class ReversibleImageNetwork:
         self.localizer.train()
 
         with torch.enable_grad():
-            # ---------------- Train the localizer -----------------------------
+            # ---------------- Train the discriminator and localizer -----------------------------
             self.optimizer_localizer.zero_grad()
             x_hidden, x_recover, mask, self.jpeg_layer.__class__.__name__ = self.encoder_decoder(Cover, Another)
+            # Discriminate
+            d_target_label_cover = torch.full((batch_size, 1), self.cover_label, device=self.device)
+            d_target_label_encoded = torch.full((batch_size, 1), self.encoded_label, device=self.device)
+            g_target_label_encoded = torch.full((batch_size, 1), self.cover_label, device=self.device)
+            d_on_cover = self.discriminator(Cover)
+            d_loss_on_cover = self.bce_with_logits_loss(d_on_cover, d_target_label_cover)
+            d_loss_on_cover.backward()
+            d_on_encoded = self.discriminator(x_hidden.detach())
+            d_on_recovered = self.discriminator(x_recover.detach())
+            d_loss_on_encoded = self.bce_with_logits_loss(d_on_encoded, d_target_label_encoded)
+            d_loss_on_recovered = self.bce_with_logits_loss(d_on_recovered, d_target_label_encoded)
+            d_loss_on_fake_total = d_loss_on_encoded + d_loss_on_recovered
+            d_loss_on_fake_total.backward()
+            self.optimizer_discrim.step()
 
             x_1_crop, cropout_label, _ = self.cropout_layer(x_hidden, Cover)
             x_1_gaussian = self.gaussian(x_1_crop)
@@ -69,9 +97,25 @@ class ReversibleImageNetwork:
             self.optimizer_encoder_decoder.zero_grad()
             pred_again_label = self.localizer(x_1_attack)
             loss_localization_again = self.bce_with_logits_loss(pred_again_label, cropout_label)
-            loss_cover = F.mse_loss(x_hidden, Cover)
-            loss_recover = F.mse_loss(x_recover.mul(mask), Cover.mul(mask))/self.config.min_required_block_portion
-            loss_enc_dec = loss_localization_again*self.hyper[0]+loss_cover*self.hyper[1]+loss_recover*self.hyper[2]
+            if self.vgg_loss == None:
+                loss_cover = self.mse_loss(x_hidden, Cover)
+                loss_recover = self.mse_loss(x_recover.mul(mask), Cover.mul(mask)) / self.config.min_required_block_portion
+            else:
+                vgg_on_cov = self.vgg_loss(Cover)
+                vgg_on_enc = self.vgg_loss(x_hidden)
+                loss_cover = self.mse_loss(vgg_on_cov, vgg_on_enc)
+                vgg_on_recovery = self.vgg_loss(x_recover.mul(mask) + Cover.mul(1-mask))
+                loss_recover = self.mse_loss(vgg_on_cov, vgg_on_recovery)
+            d_on_encoded_for_enc = self.discriminator(x_hidden)
+            g_loss_adv_enc = self.bce_with_logits_loss(d_on_encoded_for_enc, g_target_label_encoded)
+            d_on_encoded_for_recovery = self.discriminator(x_recover)
+            g_loss_adv_recovery = self.bce_with_logits_loss(d_on_encoded_for_recovery, g_target_label_encoded)
+            # Total loss for EncoderDecoder
+            loss_enc_dec =  g_loss_adv_enc * self.config.hyper_discriminator \
+                           + g_loss_adv_recovery * self.config.hyper_discriminator \
+                           + loss_localization_again * self.config.hyper_localizer\
+                           + loss_cover * self.config.hyper_cover\
+                            + loss_recover * self.config.hyper_recovery
             loss_enc_dec.backward()
             self.optimizer_encoder_decoder.step()
 
@@ -79,7 +123,9 @@ class ReversibleImageNetwork:
             'loss_sum': loss_enc_dec.item(),
             'loss_localization': loss_localization.item(),
             'loss_cover': loss_cover.item(),
-            'loss_recover': loss_recover.item()
+            'loss_recover': loss_recover.item(),
+            'loss_discriminator_enc': g_loss_adv_enc.item(),
+            'loss_discriminator_recovery': g_loss_adv_recovery.item()
         }
         return losses, (x_hidden, x_recover.mul(mask)+Cover.mul(1-mask), pred_label, cropout_label)
 
@@ -96,8 +142,8 @@ class ReversibleImageNetwork:
             pred_label = self.localizer(x_1_attack.detach())
             loss_localization = self.bce_with_logits_loss(pred_label, cropout_label)
 
-            loss_cover = F.mse_loss(x_hidden, Cover)
-            loss_recover = F.mse_loss(x_recover.mul(mask), Cover.mul(mask)) / self.config.min_required_block_portion
+            loss_cover = self.mse_loss(x_hidden, Cover)
+            loss_recover = self.mse_loss(x_recover.mul(mask), Cover.mul(mask)) / self.config.min_required_block_portion
             loss_enc_dec = loss_localization * self.hyper[0] + loss_cover * self.hyper[1] + loss_recover * \
                            self.hyper[2]
 

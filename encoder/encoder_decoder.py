@@ -1,14 +1,13 @@
 import torch.nn as nn
 
 from config import GlobalConfig
-from encoder.encode_noPool_recovery import EncoderNetwork_noPoolRecovery
-from encoder.encoder_noPool import EncoderNetwork_noPool
+from decoder.decoder_pool import Decoder_pool
 from noise_layers.cropout import Cropout
 from noise_layers.identity import Identity
 from noise_layers.jpeg_compression import JpegCompression
 from noise_layers.quantization import Quantization
-from encoder.encoder_noPool_shuffle import EncoderNetwork_noPool_shuffle
 from noise_layers.gaussian import Gaussian
+from encoder.encoder_pool_shuffle import EncoderNetwork_pool_shuffle
 
 class EncoderDecoder(nn.Module):
     """
@@ -23,7 +22,7 @@ class EncoderDecoder(nn.Module):
         self.config = config
         self.device = self.config.device
         # Generator Network
-        self.encoder = EncoderNetwork_noPool_shuffle(config=config).to(self.device)
+        self.encoder = EncoderNetwork_pool_shuffle(config=config).to(self.device)
         # Noise Network
         self.jpeg_layer = JpegCompression(self.device)
         self.other_noise_layers = [Identity()]
@@ -32,7 +31,7 @@ class EncoderDecoder(nn.Module):
         self.cropout_layer = Cropout(config).to(self.device)
         self.gaussian = Gaussian(config).to(self.device)
         # Recovery Network
-        self.recovery = EncoderNetwork_noPoolRecovery(config=config).to(self.device)
+        self.recovery = Decoder_pool(config=config).to(self.device)
 
     def forward(self, Cover, Another):
         # 训练Generator
