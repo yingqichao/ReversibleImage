@@ -89,7 +89,9 @@ class EncoderNetwork_noPoolRecovery(nn.Module):
             DoubleConv(120, 40),
             DoubleConv(40, 40),
         )
-        self.final = DoubleConv(120, 3, disable_last_activate=True)
+        self.final = nn.Conv2d(120 + 3, 3, kernel_size=1, padding=0)
+        #self.final = nn.Conv2d(120, 3, kernel_size=1, padding=0)
+        #self.final = DoubleConv(120, 3, disable_last_activate=True)
 
     def forward(self, p):
 
@@ -122,7 +124,7 @@ class EncoderNetwork_noPoolRecovery(nn.Module):
         il1_2 = self.invertLevel1_2(il2)
         il1_3 = self.invertLevel1_3(il2)
         il1 = torch.cat([il1_1, il1_2, il1_3], dim=1)
-
-        out = self.final(il1)
+        il1_cat = torch.cat([il1, p], dim=1)
+        out = self.final(il1_cat)
 
         return out

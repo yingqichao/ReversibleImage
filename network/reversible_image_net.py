@@ -8,6 +8,7 @@ from noise_layers.cropout import Cropout
 from noise_layers.identity import Identity
 from noise_layers.jpeg_compression import JpegCompression
 from noise_layers.quantization import Quantization
+from noise_layers.gaussian import Gaussian
 import torch.nn.functional as F
 
 # def gaussian(tensor, mean=0, stddev=0.1):
@@ -38,11 +39,11 @@ class ReversibleImageNetwork:
 
         # Attack Layers
         self.cropout_layer = Cropout(config).to(self.device)
-        self.jpeg_layer = JpegCompression(self.device)
+        self.jpeg_layer = JpegCompression(self.device).to(self.device)
         self.other_noise_layers = [Identity()]
-        self.other_noise_layers.append(JpegCompression(self.device))
-        self.other_noise_layers.append(Quantization(self.device))
-
+        self.other_noise_layers.append(JpegCompression(self.device).to(self.device))
+        self.other_noise_layers.append(Quantization(self.device).to(self.device))
+        self.gaussian = Gaussian(config).to(self.device)
         # Loss
         self.bce_with_logits_loss = nn.BCEWithLogitsLoss().to(self.device)
 
@@ -58,7 +59,8 @@ class ReversibleImageNetwork:
             x_hidden, x_recover, mask, self.jpeg_layer.__class__.__name__ = self.encoder_decoder(Cover, Another)
 
             x_1_crop, cropout_label, _ = self.cropout_layer(x_hidden, Cover)
-            x_1_attack = self.jpeg_layer(x_1_crop)
+            x_1_gaussian = self.gaussian(x_1_crop)
+            x_1_attack = self.jpeg_layer(x_1_gaussian)
             pred_label = self.localizer(x_1_attack.detach())
             loss_localization = F.binary_cross_entropy(pred_label, cropout_label)
             loss_localization.backward()
@@ -68,7 +70,7 @@ class ReversibleImageNetwork:
             pred_again_label = self.localizer(x_1_attack)
             loss_localization_again = F.binary_cross_entropy(pred_again_label, cropout_label)
             loss_cover = F.mse_loss(x_hidden, Cover)
-            loss_recover = F.mse_loss(x_recover.mul(mask), Cover.mul(mask))
+            loss_recover = F.mse_loss(x_recover.mul(mask), Cover.mul(mask))/self.config.min_required_block_portion
             loss_enc_dec = loss_localization_again*self.hyper[0]+loss_cover*self.hyper[1]+loss_recover*self.hyper[2]
             loss_enc_dec.backward()
             self.optimizer_encoder_decoder.step()
@@ -81,9 +83,39 @@ class ReversibleImageNetwork:
         }
         return losses, (x_hidden, x_recover.mul(mask)+Cover.mul(1-mask), pred_label, cropout_label)
 
-    def save_state_dict(self, path,):
+    def validate_on_batch(self, Cover, Another):
+        batch_size = Cover.shape[0]
+        self.encoder_decoder.eval()
+        self.localizer.eval()
+        with torch.enable_grad():
+            x_hidden, x_recover, mask, self.jpeg_layer.__class__.__name__ = self.encoder_decoder(Cover, Another)
+
+            x_1_crop, cropout_label, _ = self.cropout_layer(x_hidden, Cover)
+            x_1_gaussian = self.gaussian(x_1_crop)
+            x_1_attack = self.jpeg_layer(x_1_gaussian)
+            pred_label = self.localizer(x_1_attack.detach())
+            loss_localization = F.binary_cross_entropy(pred_label, cropout_label)
+
+            loss_cover = F.mse_loss(x_hidden, Cover)
+            loss_recover = F.mse_loss(x_recover.mul(mask), Cover.mul(mask)) / self.config.min_required_block_portion
+            loss_enc_dec = loss_localization * self.hyper[0] + loss_cover * self.hyper[1] + loss_recover * \
+                           self.hyper[2]
+
+        losses = {
+            'loss_sum': loss_enc_dec.item(),
+            'loss_localization': loss_localization.item(),
+            'loss_cover': loss_cover.item(),
+            'loss_recover': loss_recover.item()
+        }
+        return losses, (x_hidden, x_recover.mul(mask) + Cover.mul(1 - mask), pred_label, cropout_label)
+
+    def save_state_dict(self, path):
         torch.save(self.encoder_decoder.state_dict(), path + '_encoder_decoder.pkl')
         torch.save(self.localizer.state_dict(), path + '_localizer.pkl')
+
+    def load_state_dict(self,path):
+        self.localizer.load_state_dict(torch.load(path + '_localizer.pkl'))
+        self.encoder_decoder.load_state_dict(torch.load(path + '_encoder_decoder.pkl'))
 
     # def forward(self, Cover, Another, skipLocalizationNetwork, skipRecoveryNetwork, is_test=False):
     #     # 得到Encode后的特征平面

@@ -11,10 +11,10 @@ class Cropout(nn.Module):
     Combines the noised and cover images into a single image, as follows: Takes a crop of the noised image, and takes the rest from
     the cover image. The resulting image has the same size as the original and the noised images.
     """
-    def __init__(self, config=GlobalConfig(), device=torch.device("cuda")):
+    def __init__(self, config=GlobalConfig()):
         super(Cropout, self).__init__()
         self.config = config
-        self.device = device
+        self.device = config.device
 
     def forward(self, embedded_image,cover_image=None):
 

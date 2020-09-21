@@ -140,7 +140,8 @@ class EncoderNetwork_noPool(nn.Module):
             DoubleConv(240, 40),
             DoubleConv(40, 40),
         )
-        self.final = DoubleConv(120, 3,disable_last_activate=True)
+        self.final = nn.Conv2d(120, 3, kernel_size=1, padding=0)
+        #self.final = DoubleConv(120, 3,disable_last_activate=True)
 
 
     def forward(self, p):

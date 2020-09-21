@@ -117,31 +117,32 @@ class EncoderNetwork_noPool_shuffle(nn.Module):
         )
         # Level 2
         self.invertLevel2_1 = nn.Sequential(
-            DoubleConv(120, 40),
+            DoubleConv(240, 40),
             DoubleConv(40, 40),
         )
         self.invertLevel2_2 = nn.Sequential(
-            DoubleConv(120, 40),
+            DoubleConv(240, 40),
             DoubleConv(40, 40),
         )
         self.invertLevel2_3 = nn.Sequential(
-            DoubleConv(120, 40),
+            DoubleConv(240, 40),
             DoubleConv(40, 40),
         )
         # Level 1
         self.invertLevel1_1 = nn.Sequential(
-            DoubleConv(120, 40),
+            DoubleConv(240, 40),
             DoubleConv(40, 40),
         )
         self.invertLevel1_2 = nn.Sequential(
-            DoubleConv(120, 40),
+            DoubleConv(240, 40),
             DoubleConv(40, 40),
         )
         self.invertLevel1_3 = nn.Sequential(
-            DoubleConv(120, 40),
+            DoubleConv(240, 40),
             DoubleConv(40, 40),
         )
-        self.final = DoubleConv(120, 3,disable_last_activate=True)
+        self.final = nn.Conv2d(120+3, 3, kernel_size=1, padding=0)
+        # self.final = DoubleConv(120, 3,disable_last_activate=True)
 
 
     def forward(self, p):
@@ -197,17 +198,18 @@ class EncoderNetwork_noPool_shuffle(nn.Module):
         il3_3 = self.invertLevel3_3(hiding_2)
         il3 = torch.cat([il3_1, il3_2, il3_3], dim=1)
         # Level 2
-        #il3_cat = torch.cat([il3, l2], dim=1)
-        il2_1 = self.invertLevel2_1(il3)
-        il2_2 = self.invertLevel2_2(il3)
-        il2_3 = self.invertLevel2_3(il3)
+        il3_cat = torch.cat([il3, l2], dim=1)
+        il2_1 = self.invertLevel2_1(il3_cat)
+        il2_2 = self.invertLevel2_2(il3_cat)
+        il2_3 = self.invertLevel2_3(il3_cat)
         il2 = torch.cat([il2_1, il2_2, il2_3], dim=1)
         # Level 1
-        #il2_cat = torch.cat([il2, l1], dim=1)
-        il1_1 = self.invertLevel1_1(il2)
-        il1_2 = self.invertLevel1_2(il2)
-        il1_3 = self.invertLevel1_3(il2)
+        il2_cat = torch.cat([il2, l1], dim=1)
+        il1_1 = self.invertLevel1_1(il2_cat)
+        il1_2 = self.invertLevel1_2(il2_cat)
+        il1_3 = self.invertLevel1_3(il2_cat)
         il1 = torch.cat([il1_1, il1_2, il1_3], dim=1)
-        out = self.final(il1)
+        il1_cat = torch.cat([il1, p], dim=1)
+        out = self.final(il1_cat)
 
         return out

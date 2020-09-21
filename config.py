@@ -8,15 +8,15 @@ class GlobalConfig():
         self.block_size = block_size
         self.decoder_channels = 128
         self.min_required_block = 64
-        self.min_required_block_portion = 0.25
+        self.min_required_block_portion = 0.2
         self.crop_size = (0.2, 0.2)
         self.encoder_features = 64
         self.water_features = 256
         self.device = torch.device("cuda")
-        self.num_classes = 2
+        self.num_classes = 1
         self.use_dataset = 'COCO'
         # localization cover recover
-        self.beta = (0.1,0.7,1)
+        self.beta = (0.1,1,1)
         self.num_epochs = 20
         self.train_batch_size = 2
         self.test_batch_size = 1

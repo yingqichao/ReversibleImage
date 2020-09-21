@@ -45,14 +45,18 @@ if __name__ =='__main__':
 
     def train(net, train_loader, config):
         with open('./Train_result.txt', 'w') as f:
-            loss_history, train_losses = [], []
+            train_loss_localization, train_loss_cover, train_loss_recover = [], [], []
+            hist_loss_localization, hist_loss_cover, hist_loss_recover = [], [], []
             for epoch in range(num_epochs):
+                # train
                 for idx, train_batch in enumerate(train_loader):
                     data, _ = train_batch
                     train_covers = data.to(device)
                     losses, output = net.train_on_batch(train_covers, train_covers)
                     x_hidden, x_recover, pred_label, cropout_label = output
-                    train_losses.append(losses['loss_sum'])
+                    train_loss_localization.append(losses['loss_localization'])
+                    train_loss_cover.append(losses['loss_cover'])
+                    train_loss_recover.append(losses['loss_recover'])
                     if idx % 4 == 3:
                         str = 'Net 1 Epoch {0}/{1} Training: Batch {2}/{3}. Total Loss {4:.4f}, Localization Loss {5:.4f}, Cover Loss {6:.4f}, Recover Loss {7:.4f} ' \
                             .format(epoch, num_epochs, idx + 1, len(train_loader), losses['loss_sum'],
@@ -65,22 +69,33 @@ if __name__ =='__main__':
                 # 保存图片
                 for i in range(x_recover.shape[0]):
                     util.save_images(x_recover[i].cpu(),
-                                     'epoch-recovery-{0}-{1}.png'.format(epoch, i), './Images', std=config.std,
+                                     'epoch-recovery-{0}-{1}.png'.format(epoch, i), './Images/recovery', std=config.std,
                                      mean=config.mean)
-                    util.save_images(x_hidden[i].cpu(), 'epoch-hidden-{0}-{1}.png'.format(epoch, i), './Images',
+                    util.save_images(x_hidden[i].cpu(), 'epoch-hidden-{0}-{1}.png'.format(epoch, i), './Images/hidden',
                                      std=config.std,
                                      mean=config.mean)
-                    util.save_images(train_covers[i].cpu(), 'epoch-covers-{0}-{1}.png'.format(epoch, i), './Images',
+                    util.save_images(train_covers[i].cpu(), 'epoch-covers-{0}-{1}.png'.format(epoch, i), './Images/original',
                                      std=config.std,
                                      mean=config.mean)
 
-                mean_train_loss = np.mean(train_losses)
+                mean_train_loss_localization = np.mean(train_loss_localization)
+                mean_train_loss_cover = np.mean(train_loss_cover)
+                mean_train_loss_recover = np.mean(train_loss_recover)
+                hist_loss_localization.append(mean_train_loss_cover)
+                hist_loss_cover.append(mean_train_loss_localization)
+                hist_loss_recover.append(mean_train_loss_recover)
                 net.save_state_dict(MODELS_PATH + 'Epoch N{}'.format(epoch + 1))
                 # Prints epoch average loss
-                print('Epoch [{0}/{1}], Average_loss: {2:.4f}'.format(
-                    epoch + 1, num_epochs, mean_train_loss))
+                print('Epoch [{0}/{1}], Average_loss: Localization Loss {2:.4f}, Cover Loss {3:.4f}, Recover Loss {4:.4f}'.format(
+                    epoch + 1, num_epochs, mean_train_loss_localization, mean_train_loss_cover, mean_train_loss_recover))
 
-        return net, mean_train_loss, loss_history
+                # validate
+                # for idx, test_batch in enumerate(test_loader):
+                #     data, _ = test_batch
+                #     test_covers = data.to(device)
+                #     losses, output = net.validate_on_batch(test_covers, test_covers)
+
+        return net, mean_train_loss, hist_loss_localization, hist_loss_cover, hist_loss_recover
 
     # ------------------------------------ Begin ---------------------------------------
     # Creates net object
@@ -113,16 +128,26 @@ if __name__ =='__main__':
             ])), batch_size=test_batch_size, num_workers=1,
         pin_memory=True, shuffle=True, drop_last=True)
     if not skipTraining:
-        net, mean_train_loss, loss_history = train(net, train_loader, config)
+        net, mean_train_loss, hist_loss_localization, hist_loss_cover, hist_loss_recover = train(net, train_loader, config)
         #net, mean_train_loss, loss_history = train_model(net, train_loader, beta, learning_rate, isSelfRecovery)
         # Plot loss through epochs
-        plt.plot(loss_history)
-        plt.title('Model loss')
+        plt.plot(hist_loss_localization)
+        plt.title('hist_loss_localization')
+        plt.ylabel('Loss')
+        plt.xlabel('Batch')
+        plt.show()
+        plt.plot(hist_loss_cover)
+        plt.title('hist_loss_cover')
+        plt.ylabel('Loss')
+        plt.xlabel('Batch')
+        plt.show()
+        plt.plot(hist_loss_recover)
+        plt.title('hist_loss_recover')
         plt.ylabel('Loss')
         plt.xlabel('Batch')
         plt.show()
     else:
-        net.load_state_dict(torch.load(MODELS_PATH + 'Epoch N6.pkl'))
+        net.load_state_dict(torch.load(MODELS_PATH + 'Epoch N10'))
 
     # test_model(net, test_loader, beta, learning_rate, isSelfRecovery=True)
 
