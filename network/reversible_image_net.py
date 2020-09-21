@@ -104,8 +104,11 @@ class ReversibleImageNetwork:
                 vgg_on_cov = self.vgg_loss(Cover)
                 vgg_on_enc = self.vgg_loss(x_hidden)
                 loss_cover = self.mse_loss(vgg_on_cov, vgg_on_enc)
-                vgg_on_recovery = self.vgg_loss(x_recover.mul(mask) + Cover.mul(1-mask))
-                loss_recover = self.mse_loss(vgg_on_cov, vgg_on_recovery)
+                loss_recover = self.mse_loss(x_recover.mul(mask),
+                                             Cover.mul(mask)) / self.config.min_required_block_portion
+
+                # vgg_on_recovery = self.vgg_loss(x_recover.mul(mask) + Cover.mul(1-mask))
+                # loss_recover = self.mse_loss(vgg_on_cov, vgg_on_recovery)
             d_on_encoded_for_enc = self.discriminator(x_hidden)
             g_loss_adv_enc = self.bce_with_logits_loss(d_on_encoded_for_enc, g_target_label_encoded)
             d_on_encoded_for_recovery = self.discriminator(x_recover)
