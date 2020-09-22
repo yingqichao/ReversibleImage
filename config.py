@@ -16,7 +16,7 @@ class GlobalConfig():
         self.num_classes = 1
 
         # self.beta = (0.1,1,1)
-        self.hyper_localizer = 1
+        self.hyper_localizer = 0.01
         self.hyper_cover = 1
         self.hyper_recovery = 1
         self.hyper_discriminator = 0.001
@@ -26,7 +26,7 @@ class GlobalConfig():
         self.test_batch_size = 1
 
         self.learning_rate = 0.0001
-        self.useVgg = True
+        self.useVgg = False
         self.use_dataset = 'COCO'  # "ImageNet"
         self.MODELS_PATH = './output/models/'
         self.VALID_PATH = './sample/valid_coco/'

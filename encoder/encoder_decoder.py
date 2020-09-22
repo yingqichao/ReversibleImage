@@ -19,12 +19,21 @@ class EncoderDecoder(nn.Module):
     to the Decoder which tries to recover the watermark (called decoded_message). The module outputs
     a three-tuple: (encoded_image, noised_image, decoded_message)
     """
-    def __init__(self, config=GlobalConfig()):
+    def __init__(self, username, config=GlobalConfig()):
         super(EncoderDecoder, self).__init__()
         self.config = config
         self.device = self.config.device
-        # Generator Network
-        self.encoder = EncoderNetwork_noPool_shuffle(config=config).to(self.device)
+        self.username = username
+        if self.username == "qichao":
+            # Generator Network
+            self.encoder = EncoderNetwork_pool_shuffle(config=config).to(self.device)
+            # Recovery Network
+            self.recovery = Decoder_pool(config=config).to(self.device)
+        else:
+            # Generator Network
+            self.encoder = EncoderNetwork_noPool_shuffle(config=config).to(self.device)
+            # Recovery Network
+            self.recovery = Decoder_noPool(config=config).to(self.device)
         # Noise Network
         self.jpeg_layer = JpegCompression(self.device)
         # self.other_noise_layers = [Identity()]
@@ -34,8 +43,6 @@ class EncoderDecoder(nn.Module):
         self.cropout_layer = Cropout(config).to(self.device)
         self.gaussian = Gaussian(config).to(self.device)
         self.resize_layer = Resize((0.5, 0.7)).to(self.device)
-        # Recovery Network
-        self.recovery = Decoder_noPool(config=config).to(self.device)
 
     def forward(self, Cover, Another):
         # 训练Generator

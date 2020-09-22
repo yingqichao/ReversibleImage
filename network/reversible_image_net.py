@@ -13,15 +13,15 @@ from network.discriminator import Discriminator
 from loss.vgg_loss import VGGLoss
 
 class ReversibleImageNetwork:
-    def __init__(self, config=GlobalConfig(), add_other_noise=False):
+    def __init__(self, username, config=GlobalConfig()):
         super(ReversibleImageNetwork, self).__init__()
         self.config = config
         self.device = self.config.device
-        self.add_other_noise = add_other_noise
+        self.username = username
         # Generator and Recovery Network
-        self.encoder_decoder = EncoderDecoder(config=config).to(self.device)
+        self.encoder_decoder = EncoderDecoder(username, config=config).to(self.device)
         # Localize Network
-        self.localizer = LocalizeNetwork_noPool(config).to(self.device)
+        self.localizer = LocalizeNetwork(config).to(self.device)
         # Discriminator
         self.discriminator = Discriminator(config).to(self.device)
         self.cover_label = 1
@@ -88,7 +88,9 @@ class ReversibleImageNetwork:
             loss_localization_again = self.bce_with_logits_loss(pred_again_label, cropout_label)
             if self.vgg_loss == None:
                 loss_cover = self.mse_loss(x_hidden, Cover)
-                loss_recover = self.mse_loss(x_recover.mul(mask), Cover.mul(mask)) / self.config.min_required_block_portion
+                loss_recover = self.mse_loss(x_recover.mul(mask)+x_recover.mul(1-mask)*0.1,
+                                             Cover.mul(mask)+Cover.mul(1-mask)*0.1) \
+                               / self.config.min_required_block_portion
             else:
                 vgg_on_cov = self.vgg_loss(Cover)
                 vgg_on_enc = self.vgg_loss(x_hidden)

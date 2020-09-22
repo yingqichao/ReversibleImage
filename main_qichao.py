@@ -112,7 +112,7 @@ if __name__ =='__main__':
 
     # ------------------------------------ Begin ---------------------------------------
     # Creates net object
-    net = ReversibleImageNetwork(config) #.to(device)
+    net = ReversibleImageNetwork(username="qichao", config=config) #.to(device)
 
     # Creates training set
     train_loader = torch.utils.data.DataLoader(
