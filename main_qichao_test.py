@@ -13,7 +13,6 @@ from config import GlobalConfig
 import torch.nn as nn
 import torch.nn.functional as F
 import util
-from network.reversible_image_net_hanson import ReversibleImageNetwork_hanson
 
 # Directory path
 # os.chdir("..")
@@ -120,7 +119,7 @@ if __name__ =='__main__':
 
     # ------------------------------------ Begin ---------------------------------------
     # Creates net object
-    net = ReversibleImageNetwork_hanson(username="hanson", config=config) #.to(device)
+    net = ReversibleImageNetwork(username="hanson", config=config) #.to(device)
 
     # Creates training set
     train_loader = torch.utils.data.DataLoader(
