@@ -70,20 +70,27 @@ if __name__ =='__main__':
                                     losses['loss_discriminator_enc'], losses['loss_discriminator_recovery'])
                         f.write(str + '\n')
                         print(str)
+                    if idx % 128 == 127:
+                        for i in range(x_recover.shape[0]):
+                            util.save_images(x_recover[i].cpu(),
+                                             'epoch-{0}-recovery-batch-{1}-{2}.png'.format(epoch, idx, i),
+                                             './Images/recovery',
+                                             std=config.std,
+                                             mean=config.mean)
+                            util.save_images(x_hidden[i].cpu(),
+                                             'epoch-{0}-hidden-batch-{1}-{2}.png'.format(epoch, idx, i),
+                                             './Images/hidden',
+                                             std=config.std,
+                                             mean=config.mean)
+                            util.save_images(train_covers[i].cpu(),
+                                             'epoch-{0}-covers-batch-{1}-{2}.png'.format(epoch, idx, i),
+                                             './Images/original',
+                                             std=config.std,
+                                             mean=config.mean)
 
 
                 #torch.save(net.state_dict(), MODELS_PATH + 'Epoch N{}.pkl'.format(epoch + 1))
-                # 保存图片
-                for i in range(x_recover.shape[0]):
-                    util.save_images(x_recover[i].cpu(),
-                                     'epoch-recovery-{0}-{1}.png'.format(epoch, i), './Images/recovery', std=config.std,
-                                     mean=config.mean)
-                    util.save_images(x_hidden[i].cpu(), 'epoch-hidden-{0}-{1}.png'.format(epoch, i), './Images/hidden',
-                                     std=config.std,
-                                     mean=config.mean)
-                    util.save_images(train_covers[i].cpu(), 'epoch-covers-{0}-{1}.png'.format(epoch, i), './Images/original',
-                                     std=config.std,
-                                     mean=config.mean)
+
 
                 mean_train_loss_discriminator_enc = np.mean(train_loss_discriminator_enc)
                 mean_train_loss_discriminator_recovery = np.mean(train_loss_discriminator_recovery)

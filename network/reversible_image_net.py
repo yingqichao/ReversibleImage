@@ -21,17 +21,19 @@ class ReversibleImageNetwork:
         # Generator and Recovery Network
         self.encoder_decoder = EncoderDecoder(username, config=config).to(self.device)
         # Localize Network
-        self.localizer = LocalizeNetwork(config).to(self.device)
+        if self.username=="qichao":
+            self.localizer = LocalizeNetwork(config).to(self.device)
+        else:
+            self.localizer = LocalizeNetwork_noPool(config).to(self.device)
         # Discriminator
         self.discriminator = Discriminator(config).to(self.device)
         self.cover_label = 1
         self.encoded_label = 0
         # Vgg
-        if config.useVgg:
-            self.vgg_loss = VGGLoss(3, 1, False)
-            self.vgg_loss.to(self.device)
-        else:
-            self.vgg_loss = None
+
+        self.vgg_loss = VGGLoss(3, 1, False)
+        self.vgg_loss.to(self.device)
+
         # Loss
         self.bce_with_logits_loss = nn.BCEWithLogitsLoss().to(self.device)
         self.mse_loss = nn.MSELoss().to(self.device)
@@ -86,8 +88,11 @@ class ReversibleImageNetwork:
             self.optimizer_encoder_decoder.zero_grad()
             pred_again_label = self.localizer(x_1_attack)
             loss_localization_again = self.bce_with_logits_loss(pred_again_label, cropout_label)
-            if self.vgg_loss == None:
-                loss_cover = self.mse_loss(x_hidden, Cover)
+            if self.config.useVgg == False:
+                # loss_cover = self.mse_loss(x_hidden, Cover)
+                vgg_on_cov = self.vgg_loss(Cover)
+                vgg_on_enc = self.vgg_loss(x_hidden)
+                loss_cover = self.mse_loss(vgg_on_cov, vgg_on_enc)
                 loss_recover = self.mse_loss(x_recover.mul(mask)+x_recover.mul(1-mask)*0.1,
                                              Cover.mul(mask)+Cover.mul(1-mask)*0.1) \
                                / self.config.min_required_block_portion

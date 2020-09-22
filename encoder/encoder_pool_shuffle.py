@@ -29,7 +29,7 @@ class EncoderNetwork_pool_shuffle(nn.Module):
         self.Conv5 = nn.Sequential(
             DoubleConv(512+768, 1024),
             DoubleConv(1024, 1024),
-            DoubleConv(1024, 1024),
+            # DoubleConv(1024, 1024),
         )
 
         # Size:16->32

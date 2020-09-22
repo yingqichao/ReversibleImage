@@ -27,7 +27,7 @@ class LocalizeNetwork(nn.Module):
         self.Conv5 = nn.Sequential(
             DoubleConv(512, 1024),
             DoubleConv(1024, 1024),
-            DoubleConv(1024, 1024),
+            # DoubleConv(1024, 1024),
         )
 
         # Size:16->32
