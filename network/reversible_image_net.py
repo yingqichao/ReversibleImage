@@ -3,24 +3,14 @@ import torch
 import torch.nn as nn
 from encoder.encoder_decoder import EncoderDecoder
 from config import GlobalConfig
-from network.localizer import LocalizeNetwork
+from localizer.localizer import LocalizeNetwork
+from localizer.localizer_noPool import LocalizeNetwork_noPool
 from noise_layers.cropout import Cropout
-from noise_layers.identity import Identity
 from noise_layers.jpeg_compression import JpegCompression
-from noise_layers.quantization import Quantization
+from noise_layers.resize import Resize
 from noise_layers.gaussian import Gaussian
-from encoder.encoder_pool_shuffle import EncoderNetwork_pool_shuffle
 from network.discriminator import Discriminator
 from loss.vgg_loss import VGGLoss
-
-# def gaussian(tensor, mean=0, stddev=0.1):
-#     '''Adds random noise to a tensor.'''
-#
-#     noise = torch.nn.init.normal_(torch.Tensor(tensor.size()).to(device), mean, stddev)
-#
-#     return tensor + noise
-
-# Join three networks in one module
 
 class ReversibleImageNetwork:
     def __init__(self, config=GlobalConfig(), add_other_noise=False):
@@ -31,7 +21,7 @@ class ReversibleImageNetwork:
         # Generator and Recovery Network
         self.encoder_decoder = EncoderDecoder(config=config).to(self.device)
         # Localize Network
-        self.localizer = LocalizeNetwork(config).to(self.device)
+        self.localizer = LocalizeNetwork_noPool(config).to(self.device)
         # Discriminator
         self.discriminator = Discriminator(config).to(self.device)
         self.cover_label = 1
@@ -54,9 +44,7 @@ class ReversibleImageNetwork:
         # Attack Layers
         self.cropout_layer = Cropout(config).to(self.device)
         self.jpeg_layer = JpegCompression(self.device).to(self.device)
-        self.other_noise_layers = [Identity()]
-        self.other_noise_layers.append(JpegCompression(self.device).to(self.device))
-        self.other_noise_layers.append(Quantization(self.device).to(self.device))
+        self.resize_layer = Resize((0.5, 0.7)).to(self.device)
         self.gaussian = Gaussian(config).to(self.device)
 
 
@@ -88,7 +76,8 @@ class ReversibleImageNetwork:
 
             x_1_crop, cropout_label, _ = self.cropout_layer(x_hidden, Cover)
             x_1_gaussian = self.gaussian(x_1_crop)
-            x_1_attack = self.jpeg_layer(x_1_gaussian)
+            x_1_resize = self.resize_layer(x_1_gaussian)
+            x_1_attack = self.jpeg_layer(x_1_resize)
             pred_label = self.localizer(x_1_attack.detach())
             loss_localization = self.bce_with_logits_loss(pred_label, cropout_label)
             loss_localization.backward()
@@ -104,8 +93,11 @@ class ReversibleImageNetwork:
                 vgg_on_cov = self.vgg_loss(Cover)
                 vgg_on_enc = self.vgg_loss(x_hidden)
                 loss_cover = self.mse_loss(vgg_on_cov, vgg_on_enc)
-                loss_recover = self.mse_loss(x_recover.mul(mask),
-                                             Cover.mul(mask)) / self.config.min_required_block_portion
+                # loss_recover = self.mse_loss(x_recover.mul(mask),
+                #                              Cover.mul(mask)) / self.config.min_required_block_portion
+
+                vgg_on_recovery = self.vgg_loss(x_recover)
+                loss_recover = self.mse_loss(vgg_on_cov, vgg_on_recovery)
 
                 # vgg_on_recovery = self.vgg_loss(x_recover.mul(mask) + Cover.mul(1-mask))
                 # loss_recover = self.mse_loss(vgg_on_cov, vgg_on_recovery)

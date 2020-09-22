@@ -23,11 +23,11 @@ class Cropout(nn.Module):
         sum_attacked = 0
         cropout_mask = torch.zeros_like(embedded_image)
         block_height, block_width = int(embedded_image.shape[2] / 16), int(embedded_image.shape[3] / 16)
-        if self.config.num_classes==2:
-            cropout_label = torch.zeros((embedded_image.shape[0], 2, block_height, block_width), requires_grad=False)
-            cropout_label[:, 1, :, :] = 1
-        else:
-            cropout_label = torch.zeros((embedded_image.shape[0], 1, block_height, block_width), requires_grad=False)
+        # if self.config.num_classes==2:
+        #     cropout_label = torch.zeros((embedded_image.shape[0], 2, block_height, block_width), requires_grad=False)
+        #     cropout_label[:, 1, :, :] = 1
+        # else:
+        #     cropout_label = torch.zeros((embedded_image.shape[0], 1, block_height, block_width), requires_grad=False)
 
         # 不断修改小块，直到修改面积至少为全图的50%
         while sum_attacked<self.config.min_required_block_portion:
@@ -36,11 +36,11 @@ class Cropout(nn.Module):
             sum_attacked += ratio
             # 被修改的区域内赋值1, dims: batch channel height width
             cropout_mask[:, :, h_start:h_end, w_start:w_end] = 1
-            if self.config.num_classes == 2:
-                cropout_label[:, 0, math.floor(h_start / 16):math.ceil(h_end / 16), math.floor(w_start / 16):math.ceil(w_end / 16)] = 1
-                cropout_label[:, 1, math.floor(h_start / 16):math.ceil(h_end / 16), math.floor(w_start / 16):math.ceil(w_end / 16)] = 0
-            else:
-                cropout_label[:, 0, math.floor(h_start / 16):math.ceil(h_end / 16), math.floor(w_start / 16):math.ceil(w_end / 16)] = 1
+            # if self.config.num_classes == 2:
+            #     cropout_label[:, 0, math.floor(h_start / 16):math.ceil(h_end / 16), math.floor(w_start / 16):math.ceil(w_end / 16)] = 1
+            #     cropout_label[:, 1, math.floor(h_start / 16):math.ceil(h_end / 16), math.floor(w_start / 16):math.ceil(w_end / 16)] = 0
+            # else:
+            #     cropout_label[:, 0, math.floor(h_start / 16):math.ceil(h_end / 16), math.floor(w_start / 16):math.ceil(w_end / 16)] = 1
 
 
 
@@ -50,8 +50,11 @@ class Cropout(nn.Module):
             tampered_image = embedded_image * (1-cropout_mask) + cover_image * cropout_mask
         else:
             tampered_image = embedded_image * (1-cropout_mask)
+
+        cropout_label = cropout_mask[:,0,:,:]
+        # cropout_label = cropout_label.unsqueeze(1)
         # numpy_conducted = cropout_mask.clone().detach().cpu().numpy()
         # numpy_groundtruth = cropout_label.data.clone().detach().cpu().numpy()
 
-        return tampered_image, cropout_label.to(self.device), cropout_mask
+        return tampered_image, cropout_label, cropout_mask # cropout_label.to(self.device)
 

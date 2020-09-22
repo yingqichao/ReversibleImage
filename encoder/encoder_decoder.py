@@ -5,9 +5,11 @@ from decoder.decoder_pool import Decoder_pool
 from noise_layers.cropout import Cropout
 from noise_layers.identity import Identity
 from noise_layers.jpeg_compression import JpegCompression
-from noise_layers.quantization import Quantization
+from noise_layers.resize import Resize
 from noise_layers.gaussian import Gaussian
 from encoder.encoder_pool_shuffle import EncoderNetwork_pool_shuffle
+from encoder.encoder_noPool_shuffle import EncoderNetwork_noPool_shuffle
+from decoder.decoder_noPool import Decoder_noPool
 
 class EncoderDecoder(nn.Module):
     """
@@ -22,16 +24,18 @@ class EncoderDecoder(nn.Module):
         self.config = config
         self.device = self.config.device
         # Generator Network
-        self.encoder = EncoderNetwork_pool_shuffle(config=config).to(self.device)
+        self.encoder = EncoderNetwork_noPool_shuffle(config=config).to(self.device)
         # Noise Network
         self.jpeg_layer = JpegCompression(self.device)
-        self.other_noise_layers = [Identity()]
-        self.other_noise_layers.append(JpegCompression(self.device))
-        self.other_noise_layers.append(Quantization(self.device))
+        # self.other_noise_layers = [Identity()]
+        # self.other_noise_layers.append(JpegCompression(self.device))
+        # self.other_noise_layers.append(Quantization(self.device))
+
         self.cropout_layer = Cropout(config).to(self.device)
         self.gaussian = Gaussian(config).to(self.device)
+        self.resize_layer = Resize((0.5, 0.7)).to(self.device)
         # Recovery Network
-        self.recovery = Decoder_pool(config=config).to(self.device)
+        self.recovery = Decoder_noPool(config=config).to(self.device)
 
     def forward(self, Cover, Another):
         # 训练Generator
@@ -45,8 +49,10 @@ class EncoderDecoder(nn.Module):
         #     # 固定加JPEG攻击（1），或者原图（0）
         #     random_noise_layer_again = self.jpeg_layer
         #     x_2_attack = random_noise_layer_again(x_1_out)
-        x_2_gaussian = self.gaussian(x_1_out)
-        x_2_attack = self.jpeg_layer(x_2_gaussian)
+
+        x_1_gaussian = self.gaussian(x_1_out)
+        x_1_resize = self.resize_layer(x_1_gaussian)
+        x_2_attack = self.jpeg_layer(x_1_resize)
         # 经过Cropout攻击
         x_2_crop, cropout_label_2, mask = self.cropout_layer(x_2_attack)
 

@@ -16,7 +16,7 @@ class GlobalConfig():
         self.num_classes = 1
 
         # self.beta = (0.1,1,1)
-        self.hyper_localizer = 0.1
+        self.hyper_localizer = 1
         self.hyper_cover = 1
         self.hyper_recovery = 1
         self.hyper_discriminator = 0.001
