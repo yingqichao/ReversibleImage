@@ -8,7 +8,7 @@ import torch.optim as optim
 import torchvision.transforms as transforms
 from torch import utils
 from torchvision import datasets, utils
-from network.reversible_image_net import ReversibleImageNetwork
+from network.reversible_image_net_rotate import ReversibleImageNetwork_rotate
 from config import GlobalConfig
 import torch.nn as nn
 import torch.nn.functional as F
@@ -54,8 +54,8 @@ if __name__ =='__main__':
                 for idx, train_batch in enumerate(train_loader):
                     data, _ = train_batch
                     train_covers = data.to(device)
-                    losses, output = net.train_on_batch(train_covers, train_covers)
-                    x_hidden, x_recover, pred_label, cropout_label = output
+                    losses, x_hidden, extracted = net.train_on_batch(train_covers, train_covers)
+                    x_recover_flip_y, x_recover_flip_x = extracted
                     # losses
                     train_loss_discriminator_enc.append(losses['loss_discriminator_enc'])
                     train_loss_discriminator_recovery.append(losses['loss_discriminator_recovery'])
@@ -70,10 +70,15 @@ if __name__ =='__main__':
                                     losses['loss_discriminator_enc'], losses['loss_discriminator_recovery'])
                         f.write(str + '\n')
                         print(str)
-                    if idx % 128 == 127:
-                        for i in range(x_recover.shape[0]):
-                            util.save_images(x_recover[i].cpu(),
-                                             'epoch-{0}-recovery-batch-{1}-{2}.png'.format(epoch, idx, i),
+                    if idx % 256 == 255:
+                        for i in range(x_recover_flip_y.shape[0]):
+                            util.save_images(x_recover_flip_y[i].cpu(),
+                                             'epoch-{0}-recovery-batch-{1}-{2}-y.png'.format(epoch, idx, i),
+                                             './Images/recovery',
+                                             std=config.std,
+                                             mean=config.mean)
+                            util.save_images(x_recover_flip_x[i].cpu(),
+                                             'epoch-{0}-recovery-batch-{1}-{2}-x.png'.format(epoch, idx, i),
                                              './Images/recovery',
                                              std=config.std,
                                              mean=config.mean)
@@ -119,7 +124,7 @@ if __name__ =='__main__':
 
     # ------------------------------------ Begin ---------------------------------------
     # Creates net object
-    net = ReversibleImageNetwork(username="hanson", config=config) #.to(device)
+    net = ReversibleImageNetwork_rotate(username="hanson", config=config) #.to(device)
 
     # Creates training set
     train_loader = torch.utils.data.DataLoader(

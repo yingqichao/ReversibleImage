@@ -65,7 +65,7 @@ def tensor_to_image(tensor):
     return np.clip(image, 0, 255).astype(np.uint8)
 
 
-def save_images(image, name, folder, std, mean, resize_to=None):
+def save_images(image, name, folder, std=None, mean=None, resize_to=None):
     # images = original_images[:original_images.shape[0], :, :, :].cpu()
     # watermarked_images = watermarked_images[:watermarked_images.shape[0], :, :, :].cpu()
     #
@@ -75,7 +75,8 @@ def save_images(image, name, folder, std, mean, resize_to=None):
     #
     # imgs_tsor = torch.cat(image, 0)
     #image = image[0]
-    image = denormalize(image, std, mean)
+    if std is not None:
+        image = denormalize(image, std, mean)
     if resize_to is not None:
         image = F.interpolate(image, size=resize_to)
     #

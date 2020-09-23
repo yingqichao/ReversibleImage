@@ -14,11 +14,14 @@ class DoubleConv(nn.Module):
             kernel_size_1, padding_size_1 = 5, 2
             kernel_size_2, padding_size_2 = 3, 1
         elif mode==2:
+            kernel_size_1, padding_size_1 = 5, 2
+            kernel_size_2, padding_size_2 = 5, 2
+        elif mode==3:
+            kernel_size_1, padding_size_1 = 7, 3
+            kernel_size_2, padding_size_2 = 7, 3
+        else:
             kernel_size_1, padding_size_1 = 9, 4
             kernel_size_2, padding_size_2 = 9, 4
-        elif mode==3:
-            kernel_size_1, padding_size_1 = 11, 5
-            kernel_size_2, padding_size_2 = 11, 5
 
         self.double_conv = nn.Sequential(
             nn.Conv2d(in_channels, mid_channels,
