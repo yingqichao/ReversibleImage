@@ -26,7 +26,7 @@ class GlobalConfig():
         self.test_batch_size = 1
 
         self.learning_rate = 0.0001
-        self.useVgg = False
+        self.useVgg = True
         self.use_dataset = 'COCO'  # "ImageNet"
         self.MODELS_PATH = './output/models/'
         self.VALID_PATH = './sample/valid_coco/'

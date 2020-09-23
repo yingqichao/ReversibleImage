@@ -75,20 +75,28 @@ class Decoder_noPool(nn.Module):
         # )
         # Level 5
         self.hiding_1_1 = nn.Sequential(
-            DoubleConv(256, 64, mode=0),
-            DoubleConv(64, 64, mode=0),
+            DoubleConv(3, 64, mode=2),
+            DoubleConv(64, 64, mode=2),
         )
         self.hiding_1_2 = nn.Sequential(
-            DoubleConv(256, 64, mode=1),
-            DoubleConv(64, 64, mode=1),
+            DoubleConv(3, 64, mode=3),
+            DoubleConv(64, 64, mode=3),
         )
         self.hiding_2_1 = nn.Sequential(
-            DoubleConv(128, 64, mode=0),
-            DoubleConv(64, 64, mode=0),
+            DoubleConv(128, 64, mode=2),
+            DoubleConv(64, 64, mode=2),
         )
         self.hiding_2_2 = nn.Sequential(
-            DoubleConv(128, 64, mode=1),
-            DoubleConv(64, 64, mode=1),
+            DoubleConv(128, 64, mode=3),
+            DoubleConv(64, 64, mode=3),
+        )
+        self.hiding_3_1 = nn.Sequential(
+            DoubleConv(128, 64, mode=2),
+            DoubleConv(64, 64, mode=2),
+        )
+        self.hiding_3_2 = nn.Sequential(
+            DoubleConv(128, 64, mode=3),
+            DoubleConv(64, 64, mode=3),
         )
         self.finalH = nn.Sequential(
             nn.Conv2d(128, 3, kernel_size=1, padding=0))
@@ -157,29 +165,17 @@ class Decoder_noPool(nn.Module):
         # self.final = DoubleConv(120, 3,disable_last_activate=True)
 
     def forward(self, p):
-        # Level 1
-        l1_1 = self.Level1_1(p)
-        l1_2 = self.Level1_2(p)
-        l1 = torch.cat([l1_1, l1_2], dim=1)
-        l1_large_1 = self.Level1_large_1(p)
-        l1_large_2 = self.Level1_large_2(p)
-        l1_large = torch.cat([l1_large_1, l1_large_2], dim=1)
-        # Level 2
-        # Level 1
-        l2_1 = self.Level2_1(l1)
-        l2_2 = self.Level2_2(l1)
-        l2 = torch.cat([l2_1, l2_2], dim=1)
-        l2_large_1 = self.Level2_large_1(l1_large)
-        l2_large_2 = self.Level2_large_2(l1_large)
-        l2_large = torch.cat([l2_large_1, l2_large_2], dim=1)
-        l2_cat = torch.cat([l2, l2_large], dim=1)
-        hiding_1_1 = self.hiding_1_1(l2_cat)
-        hiding_1_2 = self.hiding_1_2(l2_cat)
+
+        hiding_1_1 = self.hiding_1_1(p)
+        hiding_1_2 = self.hiding_1_2(p)
         hiding_1 = torch.cat([hiding_1_1, hiding_1_2], dim=1)
         hiding_2_1 = self.hiding_2_1(hiding_1)
         hiding_2_2 = self.hiding_2_2(hiding_1)
         hiding_2 = torch.cat([hiding_2_1, hiding_2_2], dim=1)
-        out = self.finalH(hiding_2)
+        hiding_3_1 = self.hiding_3_1(hiding_2)
+        hiding_3_2 = self.hiding_3_2(hiding_2)
+        hiding_3 = torch.cat([hiding_3_1, hiding_3_2], dim=1)
+        out = self.finalH(hiding_3)
 
         return out
 

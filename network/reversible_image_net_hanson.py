@@ -76,10 +76,10 @@ class ReversibleImageNetwork_hanson:
             d_loss_on_fake_total.backward()
             self.optimizer_discrim.step()
 
-            x_1_crop, cropout_label, _ = self.cropout_layer(x_hidden, Cover)
-            x_1_gaussian = self.gaussian(x_1_crop)
-            x_1_resize = self.resize_layer(x_1_gaussian)
-            x_1_attack = self.jpeg_layer(x_1_resize)
+            # x_1_crop, cropout_label, _ = self.cropout_layer(x_hidden, Cover)
+            # x_1_gaussian = self.gaussian(x_1_crop)
+            # x_1_resize = self.resize_layer(x_1_gaussian)
+            # x_1_attack = self.jpeg_layer(x_1_crop)
             # pred_label = self.localizer(x_1_attack.detach())
             # loss_localization = self.bce_with_logits_loss(pred_label, cropout_label)
             # loss_localization.backward()
@@ -129,7 +129,7 @@ class ReversibleImageNetwork_hanson:
             'loss_discriminator_enc': 0, #g_loss_adv_enc.item(),
             'loss_discriminator_recovery': g_loss_adv_recovery.item()
         }
-        return losses, (x_hidden, x_recover.mul(mask)+Cover.mul(1-mask), None, cropout_label)
+        return losses, (x_hidden, x_recover.mul(mask)+Cover.mul(1-mask), None, None)
 
     def validate_on_batch(self, Cover, Another):
         batch_size = Cover.shape[0]
@@ -159,10 +159,10 @@ class ReversibleImageNetwork_hanson:
 
     def save_state_dict(self, path):
         torch.save(self.encoder_decoder.state_dict(), path + '_encoder_decoder.pkl')
-        torch.save(self.localizer.state_dict(), path + '_localizer.pkl')
+        # torch.save(self.localizer.state_dict(), path + '_localizer.pkl')
 
     def load_state_dict(self,path):
-        self.localizer.load_state_dict(torch.load(path + '_localizer.pkl'))
+        # self.localizer.load_state_dict(torch.load(path + '_localizer.pkl'))
         self.encoder_decoder.load_state_dict(torch.load(path + '_encoder_decoder.pkl'))
 
     # def forward(self, Cover, Another, skipLocalizationNetwork, skipRecoveryNetwork, is_test=False):

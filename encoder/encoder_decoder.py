@@ -57,9 +57,9 @@ class EncoderDecoder(nn.Module):
         #     random_noise_layer_again = self.jpeg_layer
         #     x_2_attack = random_noise_layer_again(x_1_out)
 
-        x_1_gaussian = self.gaussian(x_1_out)
-        x_1_resize = self.resize_layer(x_1_gaussian)
-        x_2_attack = self.jpeg_layer(x_1_resize)
+        # x_1_gaussian = self.gaussian(x_1_out)
+        # x_1_resize = self.resize_layer(x_1_gaussian)
+        x_2_attack = self.jpeg_layer(x_1_out)
         # 经过Cropout攻击
         x_2_crop, cropout_label_2, mask = self.cropout_layer(x_2_attack)
 

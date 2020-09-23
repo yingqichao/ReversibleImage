@@ -88,23 +88,18 @@ class ReversibleImageNetwork:
             self.optimizer_encoder_decoder.zero_grad()
             # pred_again_label = self.localizer(x_1_attack)
             # loss_localization_again = self.bce_with_logits_loss(pred_again_label, cropout_label)
-            if self.config.useVgg == False:
+            if self.config.useVgg == True:
                 # loss_cover = self.mse_loss(x_hidden, Cover)
                 vgg_on_cov = self.vgg_loss(Cover)
                 vgg_on_enc = self.vgg_loss(x_hidden)
                 loss_cover = self.mse_loss(vgg_on_cov, vgg_on_enc)
-                loss_recover = self.mse_loss(x_recover.mul(mask)+x_recover.mul(1-mask)*0.1,
-                                             Cover.mul(mask)+Cover.mul(1-mask)*0.1) \
-                               / self.config.min_required_block_portion
-            else:
-                vgg_on_cov = self.vgg_loss(Cover)
-                vgg_on_enc = self.vgg_loss(x_hidden)
-                loss_cover = self.mse_loss(vgg_on_cov, vgg_on_enc)
-                # loss_recover = self.mse_loss(x_recover.mul(mask),
-                #                              Cover.mul(mask)) / self.config.min_required_block_portion
-
                 vgg_on_recovery = self.vgg_loss(x_recover)
                 loss_recover = self.mse_loss(vgg_on_cov, vgg_on_recovery)
+                # loss_recover = self.mse_loss(x_recover, Cover) \
+                #                / self.config.min_required_block_portion
+            else:
+                loss_cover = self.mse_loss(x_hidden, Cover)
+                loss_recover = self.mse_loss(x_recover, Cover)
 
                 # vgg_on_recovery = self.vgg_loss(x_recover.mul(mask) + Cover.mul(1-mask))
                 # loss_recover = self.mse_loss(vgg_on_cov, vgg_on_recovery)
@@ -159,10 +154,10 @@ class ReversibleImageNetwork:
 
     def save_state_dict(self, path):
         torch.save(self.encoder_decoder.state_dict(), path + '_encoder_decoder.pkl')
-        torch.save(self.localizer.state_dict(), path + '_localizer.pkl')
+        # torch.save(self.localizer.state_dict(), path + '_localizer.pkl')
 
     def load_state_dict(self,path):
-        self.localizer.load_state_dict(torch.load(path + '_localizer.pkl'))
+        # self.localizer.load_state_dict(torch.load(path + '_localizer.pkl'))
         self.encoder_decoder.load_state_dict(torch.load(path + '_encoder_decoder.pkl'))
 
     # def forward(self, Cover, Another, skipLocalizationNetwork, skipRecoveryNetwork, is_test=False):
