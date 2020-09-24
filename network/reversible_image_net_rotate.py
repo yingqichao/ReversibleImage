@@ -34,7 +34,7 @@ class ReversibleImageNetwork_rotate:
         # else:
         #     self.localizer = LocalizeNetwork_noPool(config).to(self.device)
         # Discriminator
-        # self.discriminator = Discriminator(config).to(self.device)
+        self.discriminator = Discriminator(config).to(self.device)
         self.cover_label = 1
         self.encoded_label = 0
         # Vgg
@@ -80,21 +80,21 @@ class ReversibleImageNetwork_rotate:
             x_hidden, extracted = self.encoder_decoder(Cover,(Cover_flip_y,Cover_flip_x))
             x_recover_flip_y, x_recover_flip_x = extracted[0], extracted[1]
             # Discriminate
-            # d_target_label_cover = torch.full((batch_size, 1), self.cover_label, device=self.device)
-            # d_target_label_encoded = torch.full((batch_size, 1), self.encoded_label, device=self.device)
-            # g_target_label_encoded = torch.full((batch_size, 1), self.cover_label, device=self.device)
-            # d_on_cover = self.discriminator(Cover)
-            # d_loss_on_cover = self.bce_with_logits_loss(d_on_cover, d_target_label_cover)
-            # d_loss_on_cover.backward()
-            # d_on_encoded = self.discriminator(x_hidden.detach())
-            # d_on_recovered = self.discriminator(x_recover_flip_y.detach())
-            # d_on_recovered += self.discriminator(x_recover_flip_x.detach())
-            # d_on_recovered /= 2
-            # d_loss_on_encoded = self.bce_with_logits_loss(d_on_encoded, d_target_label_encoded)
-            # d_loss_on_recovered = self.bce_with_logits_loss(d_on_recovered, d_target_label_encoded)
-            # d_loss_on_fake_total = d_loss_on_encoded + d_loss_on_recovered
-            # d_loss_on_fake_total.backward()
-            # self.optimizer_discrim.step()
+            d_target_label_cover = torch.full((batch_size, 1), self.cover_label, device=self.device)
+            d_target_label_encoded = torch.full((batch_size, 1), self.encoded_label, device=self.device)
+            g_target_label_encoded = torch.full((batch_size, 1), self.cover_label, device=self.device)
+            d_on_cover = self.discriminator(Cover)
+            d_loss_on_cover = self.bce_with_logits_loss(d_on_cover, d_target_label_cover)
+            d_loss_on_cover.backward()
+            d_on_encoded = self.discriminator(x_hidden.detach())
+            d_on_recovered = self.discriminator(x_recover_flip_y.detach())
+            d_on_recovered += self.discriminator(x_recover_flip_x.detach())
+            d_on_recovered /= 2
+            d_loss_on_encoded = self.bce_with_logits_loss(d_on_encoded, d_target_label_encoded)
+            d_loss_on_recovered = self.bce_with_logits_loss(d_on_recovered, d_target_label_encoded)
+            d_loss_on_fake_total = d_loss_on_encoded + d_loss_on_recovered
+            d_loss_on_fake_total.backward()
+            self.optimizer_discrim.step()
 
             # --------------Train the generator (encoder-decoder) ---------------------
             self.optimizer_encoder_decoder.zero_grad()
@@ -124,14 +124,15 @@ class ReversibleImageNetwork_rotate:
 
                 # vgg_on_recovery = self.vgg_loss(x_recover.mul(mask) + Cover.mul(1-mask))
                 # loss_recover = self.mse_loss(vgg_on_cov, vgg_on_recovery)
-            # d_on_encoded_for_enc = self.discriminator(x_hidden)
-            # g_loss_adv_enc = self.bce_with_logits_loss(d_on_encoded_for_enc, g_target_label_encoded)
-            # d_on_encoded_for_recovery = self.discriminator(x_recover_flip_y)
-            # d_on_encoded_for_recovery += self.discriminator(x_recover_flip_x)
-            # d_on_encoded_for_recovery /= 2
-            # g_loss_adv_recovery = self.bce_with_logits_loss(d_on_encoded_for_recovery, g_target_label_encoded)
+            d_on_encoded_for_enc = self.discriminator(x_hidden)
+            g_loss_adv_enc = self.bce_with_logits_loss(d_on_encoded_for_enc, g_target_label_encoded)
+            d_on_encoded_for_recovery = self.discriminator(x_recover_flip_y)
+            d_on_encoded_for_recovery += self.discriminator(x_recover_flip_x)
+            d_on_encoded_for_recovery /= 2
+            g_loss_adv_recovery = self.bce_with_logits_loss(d_on_encoded_for_recovery, g_target_label_encoded)
             # Total loss for EncoderDecoder
-            loss_enc_dec = loss_cover * self.config.hyper_cover + loss_recover * self.config.hyper_recovery
+            loss_enc_dec = loss_cover * self.config.hyper_cover + loss_recover * self.config.hyper_recovery+\
+            g_loss_adv_enc * self.config.hyper_discriminator + g_loss_adv_recovery * self.config.hyper_discriminator
             # loss_enc_dec =  g_loss_adv_enc * self.config.hyper_discriminator \
             #                 + loss_cover * self.config.hyper_cover\
             #                + g_loss_adv_recovery * self.config.hyper_discriminator \
@@ -184,7 +185,7 @@ class ReversibleImageNetwork_rotate:
     def load_state_dict(self,path):
         # self.localizer.load_state_dict(torch.load(path + '_localizer.pkl'))
         self.encoder_decoder.load_state_dict(torch.load(path + '_encoder_decoder.pkl'))
-
+        print("Loaded: "+path + '_encoder_decoder.pkl')
     # def forward(self, Cover, Another, skipLocalizationNetwork, skipRecoveryNetwork, is_test=False):
     #     # 得到Encode后的特征平面
     #     x_1_out = self.encoder(Cover)
