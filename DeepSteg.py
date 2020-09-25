@@ -3,6 +3,7 @@ from itertools import islice
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import util
 from torch.autograd import Variable
 from torch import utils
 import torch.nn as nn
@@ -15,6 +16,10 @@ import torchvision.transforms as transforms
 from torchvision.transforms import ToPILImage
 from random import shuffle
 from IPython.display import Image
+from noise_layers.jpeg_compression import JpegCompression
+from noise_layers.resize import Resize
+from noise_layers.gaussian import Gaussian
+from config import GlobalConfig
 
 # Directory path
 # os.chdir("..")
@@ -23,8 +28,8 @@ if __name__ =='__main__':
     device = torch.device("cuda")
     print(device)
     # Hyper Parameters
-    num_epochs = 1
-    batch_size = 2
+    num_epochs = 20
+    batch_size = 4
     learning_rate = 0.0001
     beta = 1
 
@@ -37,7 +42,7 @@ if __name__ =='__main__':
     # TRAIN_PATH = cwd+'/train/'
     # VALID_PATH = cwd+'/valid/'
     VALID_PATH = './sample/valid_coco/'
-    TRAIN_PATH = './sample/test_coco/'
+    TRAIN_PATH = './sample/train_coco/'
     TEST_PATH = './sample/test_coco/'
     if not os.path.exists(MODELS_PATH): os.mkdir(MODELS_PATH)
 
@@ -189,8 +194,8 @@ if __name__ =='__main__':
             h6 = self.finalH5(mid)
             mid2 = torch.cat((h4, h5, h6), 1)
             out = self.finalH(mid2)
-            out_noise = gaussian(out.data, 0, 0.1)
-            return out, out_noise
+            # out_noise = gaussian(out.data, 0, 0.1)
+            return out
 
 
     # Reveal Network (2 conv layers)
@@ -253,23 +258,34 @@ if __name__ =='__main__':
 
     # Join three networks in one module
     class Net(nn.Module):
-        def __init__(self):
+        def __init__(self, config=GlobalConfig()):
             super(Net, self).__init__()
             self.m1 = PrepNetwork().to(device)
             self.m2 = HidingNetwork().to(device)
             self.m3 = RevealNetwork().to(device)
+            self.device = config.device
+            # Noise Network
+            self.jpeg_layer = JpegCompression(self.device)
+
+            # self.cropout_layer = Cropout(config).to(self.device)
+            self.gaussian = Gaussian(config).to(self.device)
+            self.resize_layer = Resize((0.5, 0.7)).to(self.device)
 
         def forward(self, secret, cover):
             x_1 = self.m1(secret)
             mid = torch.cat((x_1, cover), 1)
-            x_2, x_2_noise = self.m2(mid)
-            x_3 = self.m3(x_2_noise)
-            return x_2, x_3
+            Hidden = self.m2(mid)
+            x_gaussian = self.gaussian(Hidden)
+            # x_1_resize = self.resize_layer(x_1_gaussian)
+            x_attack = self.jpeg_layer(x_gaussian)
+            Recovery = self.m3(x_attack)
+            return Hidden, Recovery
 
 
-    def train_model(net, train_loader, beta, learning_rate,isSelfRecovery=True):
+    def train_model(net, train_loader, beta, learning_rate):
         # Save optimizer
         optimizer = optim.Adam(net.parameters(), lr=learning_rate)
+        config = GlobalConfig()
 
         loss_history = []
         # Iterate over batches performing forward and backward passes
@@ -284,13 +300,10 @@ if __name__ =='__main__':
                 data, _ = train_batch
 
                 # Saves secret images and secret covers
-                if not isSelfRecovery:
-                    train_covers = data[:len(data) // 2]
-                    train_secrets = data[len(data) // 2:]
-                else:
-                    # self recovery
-                    train_covers = data[:]
-                    train_secrets = data[:]
+
+                train_covers = data[:len(data) // 2]
+                train_secrets = data[len(data) // 2:]
+
 
                 # Creates variable from secret and cover images
                 train_secrets = torch.tensor(train_secrets, requires_grad=False).to(device)
@@ -310,11 +323,29 @@ if __name__ =='__main__':
                 train_losses.append(train_loss.data.cpu().numpy())
                 loss_history.append(train_loss.data.cpu().numpy())
 
+                if idx % 128 == 127:
+                    for i in range(train_output.shape[0]):
+                        util.save_images(train_output[i].cpu(),
+                                         'epoch-{0}-recovery-batch-{1}-{2}.png'.format(epoch, idx, i),
+                                         './Images/pretrain/recovery',
+                                         std=config.std,
+                                         mean=config.mean)
+                        util.save_images(train_hidden[i].cpu(),
+                                         'epoch-{0}-hidden-batch-{1}-{2}.png'.format(epoch, idx, i),
+                                         './Images/pretrain/hidden',
+                                         std=config.std,
+                                         mean=config.mean)
+                        util.save_images(train_covers[i].cpu(),
+                                         'epoch-{0}-covers-batch-{1}-{2}.png'.format(epoch, idx, i),
+                                         './Images/pretrain/original',
+                                         std=config.std,
+                                         mean=config.mean)
+
                 # Prints mini-batch losses
                 print('Training: Batch {0}/{1}. Loss of {2:.4f}, cover loss of {3:.4f}, secret loss of {4:.4f}'.format(
                     idx + 1, len(train_loader), train_loss.data, train_loss_cover.data, train_loss_secret.data))
 
-            torch.save(net.state_dict(), MODELS_PATH + 'Epoch N{}.pkl'.format(epoch + 1))
+            torch.save(net.state_dict(), MODELS_PATH + '_pretrain_Epoch N{}.pkl'.format(epoch + 1))
 
             mean_train_loss = np.mean(train_losses)
 
@@ -326,16 +357,17 @@ if __name__ =='__main__':
 
 
     # Setting
-    isSelfRecovery = True
     # Creates net object
     net = Net().to(device)
+    # net.load_state_dict(torch.load(MODELS_PATH + '_pretrain_Epoch N1.pkl'))
+    # print("Successfully Loaded: "+MODELS_PATH + '_pretrain_Epoch N1.pkl')
     # Creates training set
     train_loader = torch.utils.data.DataLoader(
         datasets.ImageFolder(
             TRAIN_PATH,
             transforms.Compose([
-                transforms.Scale(256),
-                transforms.RandomCrop(224),
+                transforms.Scale(300),
+                transforms.RandomCrop(256),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=mean,
                                      std=std)
@@ -347,15 +379,15 @@ if __name__ =='__main__':
         datasets.ImageFolder(
             TEST_PATH,
             transforms.Compose([
-                transforms.Scale(256),
-                transforms.RandomCrop(224),
+                transforms.Scale(300),
+                transforms.RandomCrop(256),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=mean,
                                      std=std)
             ])), batch_size=1, num_workers=1,
         pin_memory=True, shuffle=True, drop_last=True)
 
-    net, mean_train_loss, loss_history = train_model(net, train_loader, beta, learning_rate, isSelfRecovery)
+    net, mean_train_loss, loss_history = train_model(net, train_loader, beta, learning_rate)
     # Plot loss through epochs
     plt.plot(loss_history)
     plt.title('Model loss')
@@ -374,14 +406,9 @@ if __name__ =='__main__':
         data, _ = test_batch
 
         # Saves secret images and secret covers
-        if not isSelfRecovery:
-            test_secret = data[:len(data) // 2]
-            test_cover = data[len(data) // 2:]
-        else:
-            # Self Recovery
-            test_secret = data[:]
-            test_cover = data[:]
 
+        test_secret = data[:len(data) // 2]
+        test_cover = data[len(data) // 2:]
 
         # Creates variable from secret and cover images
         test_secret = torch.tensor(test_secret, requires_grad=False).to(device)

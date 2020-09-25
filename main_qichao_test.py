@@ -125,7 +125,7 @@ if __name__ =='__main__':
     # ------------------------------------ Begin ---------------------------------------
     # Creates net object
     net = ReversibleImageNetwork_rotate(username="hanson", config=config) #.to(device)
-
+    net.load_state_dict(MODELS_PATH + 'Epoch N3')
     # Creates training set
     train_loader = torch.utils.data.DataLoader(
         datasets.ImageFolder(

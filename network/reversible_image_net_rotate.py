@@ -101,17 +101,18 @@ class ReversibleImageNetwork_rotate:
             if self.config.useVgg == True:
                 # loss_cover = self.mse_loss(x_hidden, Cover)
                 vgg_on_cov = self.vgg_loss(Cover)
-                vgg_on_cov_y = self.vgg_loss(Cover_flip_y)
-                vgg_on_cov_x = self.vgg_loss(Cover_flip_x)
-                vgg_on_enc_y = self.vgg_loss(x_recover_flip_y)
-                vgg_on_enc_x = self.vgg_loss(x_recover_flip_x)
+                # vgg_on_cov_y = self.vgg_loss(Cover_flip_y)
+                # vgg_on_cov_x = self.vgg_loss(Cover_flip_x)
+                # vgg_on_enc_y = self.vgg_loss(x_recover_flip_y)
+                # vgg_on_enc_x = self.vgg_loss(x_recover_flip_x)
                 #vgg_on_enc_xy = self.vgg_loss(flip(flip(x_recover_flip_xy,2),3))
                 vgg_on_enc = self.vgg_loss(x_hidden)
                 loss_cover = self.mse_loss(vgg_on_cov, vgg_on_enc)
-                loss_recover = self.mse_loss(vgg_on_cov_y, vgg_on_enc_y)
-                loss_recover += self.mse_loss(vgg_on_cov_x, vgg_on_enc_x)
-                #loss_recover += self.mse_loss(vgg_on_cov, vgg_on_enc_xy)
-                loss_recover /= 2
+                # loss_recover = self.mse_loss(vgg_on_cov_y, vgg_on_enc_y)
+                # loss_recover += self.mse_loss(vgg_on_cov_x, vgg_on_enc_x)
+                loss_recover = self.mse_loss(x_recover_flip_y, Cover_flip_y)
+                loss_recover += self.mse_loss(x_recover_flip_x, Cover_flip_x)
+                # loss_recover /= 2
             else:
                 vgg_on_cov = self.vgg_loss(Cover)
                 vgg_on_enc = self.vgg_loss(x_hidden)
@@ -184,7 +185,7 @@ class ReversibleImageNetwork_rotate:
     def load_state_dict(self,path):
         # self.localizer.load_state_dict(torch.load(path + '_localizer.pkl'))
         self.encoder_decoder.load_state_dict(torch.load(path + '_encoder_decoder.pkl'))
-
+        print("Loaded: "+path + '_encoder_decoder.pkl')
     # def forward(self, Cover, Another, skipLocalizationNetwork, skipRecoveryNetwork, is_test=False):
     #     # 得到Encode后的特征平面
     #     x_1_out = self.encoder(Cover)

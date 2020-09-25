@@ -3,8 +3,8 @@ import torch
 class GlobalConfig():
 
     def __init__(self):
-        self.Height = 224
-        self.Width = 224
+        self.Height = 256
+        self.Width = 256
         self.block_size = 16
         self.decoder_channels = 128
         self.min_required_block = 64
@@ -19,9 +19,9 @@ class GlobalConfig():
         self.hyper_localizer = 0.1
         self.useVgg = True
         if self.useVgg:
-            self.hyper_cover = 1
+            self.hyper_cover = 0.01
         else:
-            self.hyper_cover = 0.1
+            self.hyper_cover = 1
         self.hyper_discriminator = 0.001
         self.hyper_recovery = 1
         self.num_epochs = 50

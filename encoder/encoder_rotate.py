@@ -52,11 +52,11 @@ class Encoder_rotate(nn.Module):
         # Conduct Image Rotation
 
         # Cover_flip_xy = flip(Cover_flip_y, 3).detach()
-        p_rotate = self.Prepare(flip[0], flip[1])
-        # p_rotate2 = self.Prepare(flip[1])
+        p_rotate = self.Prepare(flip[0])
+        p_rotate1 = self.Prepare(flip[1])
         # p_rotate3 = self.Prepare(flip[2])
 
-        mid = torch.cat((p_rotate, p), 1)
+        mid = torch.cat((p_rotate,p_rotate1, p), 1)
         # mid = torch.cat((p_rotate1, p), 1)
         h1 = self.initialH3(mid)
         h2 = self.initialH4(mid)

@@ -12,34 +12,34 @@ class Encoder_rotate_prep(nn.Module):
         self.config = config
         # Prep
         self.initialP3 = nn.Sequential(
-            DoubleConv(6, 64, mode=0),  # 3*3
-            DoubleConv(64, 64, mode=0),
+            DoubleConv(3, 32, mode=0),  # 3*3
+            DoubleConv(32, 32, mode=0),
         )
         self.initialP4 = nn.Sequential(
-            DoubleConv(6, 64, mode=1),  # 3*3
-            DoubleConv(64, 64, mode=1),
+            DoubleConv(3, 32, mode=1),  # 3*3
+            DoubleConv(32, 32, mode=1),
         )
         self.initialP5 = nn.Sequential(
-            DoubleConv(6, 64, mode=2),  # 3*3
-            DoubleConv(64, 64, mode=2),
+            DoubleConv(3, 32, mode=2),  # 3*3
+            DoubleConv(32, 32, mode=2),
         )
         self.finalP3 = nn.Sequential(
-            DoubleConv(192, 64, mode=0),
-            DoubleConv(64, 64, mode=0),
+            DoubleConv(96, 32, mode=0),
+            DoubleConv(32, 32, mode=0),
         )
         self.finalP4 = nn.Sequential(
-            DoubleConv(192, 64, mode=1),
-            DoubleConv(64, 64, mode=1),
+            DoubleConv(96, 32, mode=1),
+            DoubleConv(32, 32, mode=1),
         )
         self.finalP5 = nn.Sequential(
-            DoubleConv(192, 64, mode=2),
-            DoubleConv(64, 64, mode=2),
+            DoubleConv(96, 32, mode=2),
+            DoubleConv(32, 32, mode=2),
         )
 
 
 
-    def forward(self, cover1, cover2):
-        p = torch.cat((cover1, cover2), 1)
+    def forward(self, p):
+        # p = torch.cat((cover1, cover2), 1)
         p1 = self.initialP3(p)
         p2 = self.initialP4(p)
         p3 = self.initialP5(p)
